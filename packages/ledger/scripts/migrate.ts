@@ -19,10 +19,17 @@ const migrationSets = [
 
 async function main() {
   const databaseUrl = process.env.DATABASE_URL ?? "postgres://postgres:postgres@localhost:5432/bp_ledger";
+  // Defaults to "public" (existing behavior, unchanged for local/CI). Set to
+  // e.g. "wagebook" when deploying into a shared database that already has
+  // unrelated tables in "public".
+  const schema = process.env.TARGET_SCHEMA ?? "public";
   const client = new Client({ connectionString: databaseUrl });
   await client.connect();
 
   try {
+    await client.query(`create schema if not exists "${schema}"`);
+    await client.query(`set search_path to "${schema}", public`);
+
     await client.query(`
       create table if not exists schema_migrations (
         filename   text primary key,
@@ -37,8 +44,9 @@ async function main() {
         const { rows } = await client.query("select 1 from schema_migrations where filename = $1", [key]);
         if (rows.length > 0) continue;
 
-        const sql = await readFile(path.join(set.dir, file), "utf8");
-        console.log(`applying ${key}`);
+        const rawSql = await readFile(path.join(set.dir, file), "utf8");
+        const sql = rawSql.replaceAll("schema public", `schema "${schema}"`);
+        console.log(`applying ${key} into schema "${schema}"`);
         await client.query("begin");
         try {
           await client.query(sql);
@@ -56,6 +64,7 @@ async function main() {
     const appUserPassword = process.env.CORE_APP_USER_PASSWORD ?? "app_user";
     const literal = `'${appUserPassword.replace(/'/g, "''")}'`;
     await client.query(`alter role app_user with password ${literal}`);
+    await client.query(`alter role app_user set search_path to "${schema}", public`);
     console.log("app_user password set");
   } finally {
     await client.end();

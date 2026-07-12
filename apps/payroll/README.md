@@ -7,9 +7,12 @@ Friday (Nigeria only; Kuwait is specced and cut, see
 **Status:** the payroll run engine is built and tested — employees, effective-dated
 employment records, a run lifecycle (`draft` → `calculated` → `posted`) that wires
 `packages/rules`' NG 2026 calculation into a single balanced `packages/ledger` posting per
-run, and a minimal payslip PDF. **No UI, no HTTP layer, no auth flow** — this is the engine
-behind the app, run and tested directly, in the same spirit as `packages/core`/`ledger`/
-`rules` so far.
+run, and a minimal payslip PDF. A Next.js UI now sits on top (demo login, dashboard,
+employees, payroll runs, payslip PDF download) and a seed script builds a full demo org —
+verified end-to-end locally (login → dashboard → employees → payroll → PDF, screenshotted
+via Playwright). **Not yet deployed**: a live demo URL was attempted against Vercel but
+blocked by a permission error on the connected account/team ("You don't have permission to
+create a Production/Preview Deployment for this project") — see "Deploying" below.
 
 **The proof:** `tests/payrollRun.spec.ts` — a payroll run for 20 employees (spanning the 0%
 PAYE band through the higher bands, mixed pension/NHF opt-in, some claiming rent relief), all
@@ -43,7 +46,12 @@ green:
 
 ## Not built yet
 
-- Any UI, route, or HTTP layer — everything above is called directly from tests
+- Real authentication — the deployed UI uses a fixed set of demo personas (owner/admin/
+  viewer) selected from a login page and stored in a plain httpOnly cookie, not Supabase Auth
+  or any other real identity provider. This is a deliberate simplification to stay consistent
+  with the `app.current_user_id` RLS mechanism `packages/core` already has — see
+  `src/lib/session.ts`.
+- A live deployment. See "Deploying" below.
 - Adjustment runs for corrections (the plan calls for these instead of ever mutating an
   approved run; the immutability guard exists, the adjustment-run flow doesn't yet)
 - Bank payment file / WPS export, statutory schedules, employee self-service, leave — all
@@ -60,6 +68,32 @@ pnpm --filter @bp/payroll exec tsx scripts/create-db.ts   # DATABASE_URL default
 pnpm --filter @bp/payroll run migrate   # applies core's, ledger's, then this app's migrations
 pnpm --filter @bp/payroll test
 ```
+
+To run the UI against a seeded demo org:
+
+```bash
+pnpm --filter @bp/payroll run seed:demo   # builds "Wagebook Demo": 22 employees, a posted March 2026 run
+pnpm --filter @bp/payroll dev
+```
+
+## Deploying
+
+The app targets a shared Postgres instance via `TARGET_SCHEMA` (read by all three
+`migrate.ts` scripts — `packages/core`, `packages/ledger`, `apps/payroll`): set it to an
+app-specific schema name (e.g. `wagebook`) when deploying into a database that already hosts
+unrelated apps' tables in `public`, so nothing here ever touches another app's schema or
+grants. `APP_DATABASE_URL` at runtime then needs `?sslmode=require` for a hosted Postgres
+provider reachable only over TLS (e.g. Supabase's connection pooler), since `packages/core`'s
+`pg.Pool` doesn't set `ssl` on its own.
+
+A Vercel deployment (`vercel.json` with the `env.APP_DATABASE_URL` for the target database,
+`rootDirectory: "apps/payroll"`) was attempted against a live Supabase project (isolated in
+its own `wagebook` Postgres schema, with a dedicated `app_user` role scoped to only that
+schema — confirmed via `information_schema.role_table_grants`) but blocked by a 403 from
+Vercel: *"You don't have permission to create a Production/Preview Deployment for this
+project."* This is an account/team role or billing restriction on the connected Vercel
+account, not a code issue — resolving it (checking the team member role, or deploying under
+a different account/team) is the next step before a live demo URL exists.
 
 ## Project context for AI assistants
 

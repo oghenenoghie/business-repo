@@ -201,7 +201,7 @@ Add a property test too: for any employee and any jurisdiction, `gross - sum(ded
 ## Build state
 
 **Phase 0 — Shared core** (this is the old "Helio" work; do it once, three apps use it)
-- [x] Monorepo: `packages/core`, `packages/ledger`, `packages/rules`, `apps/payroll` (apps/payroll has a run engine now; no UI yet)
+- [x] Monorepo: `packages/core`, `packages/ledger`, `packages/rules`, `apps/payroll` (apps/payroll has a run engine and a Next.js UI now)
 - [x] `core`: organizations, memberships, RBAC, RLS + `has_org_role()`, audit log
 - [x] `core`: cross-tenant RLS test suite — 8 tests, `packages/core/tests/rls.spec.ts`
 - [x] `ledger`: accounts, journal entries, journal lines; balanced-or-abort; append-only
@@ -240,11 +240,11 @@ Add a property test too: for any employee and any jurisdiction, `gross - sum(ded
 - [ ] Headcount cost reporting
 
 **Phase 6 — Proof**
-- [ ] Golden-set suite green in CI, with sources cited
-- [ ] Property tests: gross − deductions = net; every journal entry balances
-- [ ] Seed a demo org with ~40 employees across both jurisdictions
-- [ ] README leading with reproducibility + integer money + rules-as-data
-- [ ] Deploy with a demo login
+- [x] Golden-set suite green in CI, with sources cited
+- [x] Property tests: gross − deductions = net (`interpreter.spec.ts`); every journal entry balances (`ledger.spec.ts`, `payrollRun.spec.ts`)
+- [x] Seed a demo org — `apps/payroll/scripts/seed-demo.ts`: 22 employees, NG only (no KW jurisdiction pack to seed against yet), a full posted 2026-03 run
+- [x] README leading with reproducibility + integer money + rules-as-data
+- [ ] Deploy with a demo login — UI, demo-login flow, and seed script are built and verified end-to-end locally (Playwright: login → dashboard → employees → payroll → PDF); a live URL was attempted against a Supabase-hosted Postgres (isolated in its own `wagebook` schema) and Vercel, but blocked by a 403 "You don't have permission to create a Production/Preview Deployment" on the connected Vercel account/team — see `apps/payroll/README.md#deploying`. No demo URL exists yet.
 
 ## What Patrick needs to provide
 

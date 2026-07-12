@@ -21,7 +21,10 @@ apps/
 ## Status
 
 `packages/core`, `packages/ledger`, `packages/rules`, and the `apps/payroll` run engine are
-built and tested. There is no UI, no HTTP layer, and no deployment yet — see
+built and tested. `apps/payroll` now also has a Next.js UI (demo login, dashboard, employees,
+payroll runs, payslip PDF) and a demo-org seed script, verified end-to-end locally. **Not yet
+deployed** — a live URL was attempted and blocked by a Vercel account/team permission error;
+see [`apps/payroll/README.md`](apps/payroll/README.md#deploying). See
 [`docs/SIX-DAY-PLAN.md`](docs/SIX-DAY-PLAN.md) for the build order, and each package/app
 `README.md` for its individual status.
 
