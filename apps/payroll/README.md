@@ -4,11 +4,15 @@ Multi-jurisdiction payroll. **Build this first** — it is the one app scoped to
 Friday (Nigeria only; Kuwait is specced and cut, see
 [`docs/SIX-DAY-PLAN.md`](../../docs/SIX-DAY-PLAN.md)).
 
-**Status:** not started. Depends on `packages/core` (tenancy/RBAC/RLS) and `packages/ledger`
-(posting payroll runs to the general ledger).
+**Status:** not started — but its dependencies are ready. `packages/rules` now computes a
+correct NG payslip as a pure function (golden tests green, see
+[`packages/rules/README.md`](../../packages/rules/README.md)), `packages/core` has
+tenancy/RBAC/RLS, and `packages/ledger` can post the result to a general ledger. What's left
+here is the app itself: employees, employment records, a payroll run that wires
+`packages/rules` output into `packages/ledger` postings, and payslip output.
 
-**Done when:** a payslip computes correctly against real NG tax tables (golden tests first,
-UI second), and a full payroll run for 20 employees works end to end.
+**Done when:** a full payroll run for 20 employees works end to end, posts to the ledger, and
+produces a payslip.
 
 ## Project context for AI assistants
 

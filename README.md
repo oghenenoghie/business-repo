@@ -6,6 +6,7 @@ A multi-tenant platform with a shared core and four vertical products.
 packages/
   core/      tenancy, RBAC, Postgres RLS, audit log
   ledger/    double-entry accounting — integer money, balanced-or-abort, append-only
+  rules/     effective-dated statutory rules engine — pure (snapshot, rule_set) -> payslip
   realtime/  presence, optimistic sync            (planned)
   delivery/  webhook delivery, retries            (planned)
   analytics/ events, funnels, cohorts             (planned)
@@ -19,9 +20,9 @@ apps/
 
 ## Status
 
-`packages/core` and `packages/ledger` are built and tested; the four apps haven't started.
-See [`docs/SIX-DAY-PLAN.md`](docs/SIX-DAY-PLAN.md) for the build order, and each package/app
-`README.md` for its individual status.
+`packages/core`, `packages/ledger`, and `packages/rules` are built and tested; the four apps
+haven't started. See [`docs/SIX-DAY-PLAN.md`](docs/SIX-DAY-PLAN.md) for the build order, and
+each package/app `README.md` for its individual status.
 
 **The RLS test result:** Org A provably cannot read Org B's rows —
 [`packages/core/tests/rls.spec.ts`](packages/core/tests/rls.spec.ts), 8 tests, all green.
@@ -32,19 +33,28 @@ sums to exactly `0n` and every account balance matches an independent raw-SQL ag
 green. A forged unbalanced entry that bypasses the application-layer check is still rejected
 by Postgres's deferred constraint trigger.
 
-CI (`.github/workflows/ci.yml`) runs both suites against a real Postgres service on every
+**The payroll result:** a payslip computes correctly against the Nigeria Tax Act 2025 PAYE
+bands (effective 2026-01-01) — three hand-verified golden cases with the arithmetic shown in
+comments, plus a monotonicity property test —
+[`packages/rules/tests/golden/ng2026.spec.ts`](packages/rules/tests/golden/ng2026.spec.ts),
+18 tests across the package, all green. Sources are cited in
+[`packages/rules/src/jurisdictions/ng2026.ts`](packages/rules/src/jurisdictions/ng2026.ts).
+
+CI (`.github/workflows/ci.yml`) runs all three suites (Postgres-backed where needed) on every
 push and PR.
 
 ```mermaid
 graph TD
     core[packages/core<br/>tenancy · RBAC · RLS · audit]
     ledger[packages/ledger<br/>double-entry · integer money]
+    rules[packages/rules<br/>statutory rules engine]
     payroll[apps/payroll<br/>Wagebook]
     coop[apps/coop<br/>Ajo]
     hotel[apps/hotel<br/>Portier]
     school[apps/school<br/>Termly]
     core --> payroll & coop & hotel & school
     ledger --> payroll & coop & hotel
+    rules --> payroll
 ```
 
 ## Why a monorepo
@@ -90,6 +100,8 @@ pnpm --filter @bp/core test          # cross-tenant RLS suite
 pnpm --filter @bp/ledger exec tsx scripts/create-db.ts
 pnpm --filter @bp/ledger run migrate # applies core's migrations first, then ledger's
 pnpm --filter @bp/ledger test        # trial-balance property tests
+
+pnpm --filter @bp/rules test         # no database needed — pure computation
 ```
 
 `pnpm dev` has nothing to run yet — no app has started (see Status above).
@@ -104,7 +116,7 @@ helio-saas-platform/       packages/core
 cadence-realtime-board/    packages/realtime  (planned)
 relay-webhooks/            packages/delivery  (planned)
 pulse-analytics/           packages/analytics (planned)
-wagebook-payroll/          apps/payroll       — build this first
+wagebook-payroll/          apps/payroll and packages/rules — build this first
 ajo-cooperative/           apps/coop
 portier-hotel/             apps/hotel
 termly-school/             apps/school
