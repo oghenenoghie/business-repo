@@ -201,23 +201,23 @@ Add a property test too: for any employee and any jurisdiction, `gross - sum(ded
 ## Build state
 
 **Phase 0 — Shared core** (this is the old "Helio" work; do it once, three apps use it)
-- [ ] Monorepo: `packages/core`, `packages/ledger`, `packages/rules`, `apps/payroll`
-- [ ] `core`: organizations, memberships, RBAC, RLS + `has_org_role()`, audit log
-- [ ] `core`: cross-tenant RLS test suite
-- [ ] `ledger`: accounts, journal entries, journal lines; balanced-or-abort; append-only
-- [ ] `ledger`: trial balance must sum to zero — property test
+- [x] Monorepo: `packages/core`, `packages/ledger`, `packages/rules`, `apps/payroll` (apps/payroll is still a stub)
+- [x] `core`: organizations, memberships, RBAC, RLS + `has_org_role()`, audit log
+- [x] `core`: cross-tenant RLS test suite — 8 tests, `packages/core/tests/rls.spec.ts`
+- [x] `ledger`: accounts, journal entries, journal lines; balanced-or-abort; append-only
+- [x] `ledger`: trial balance must sum to zero — property test, `packages/ledger/tests/ledger.spec.ts`
 
 **Phase 1 — Rules engine**
-- [ ] `jurisdictions`, `rule_sets` (effective-dated, versioned), `components`
-- [ ] Interpreter: `fixed`, `percentage_of`, `graduated_bands`, `capped_percentage`, `formula`, `accrual`
-- [ ] Conditional application (`applies_when` on nationality / employee_type)
-- [ ] Pure calculation function: `(snapshot, rule_set_version, period) → Payslip`
-- [ ] Golden-set tests — start here, before the UI. **Verify every rate against primary sources.**
+- [x] `rule_sets` (effective-dated, versioned), `components` — as in-memory TS data for now, not yet Postgres rows (see `packages/rules/README.md` "Not built yet")
+- [x] Interpreter: `fixed`, `percentage_of`, `graduated_bands`, `capped_percentage`, `accrual` — `formula` (safe expression evaluator) not built; NG's components express without it
+- [x] Conditional application (`applies_when` on nationality / employee_type / an arbitrary flag)
+- [x] Pure calculation function: `(snapshot, rule_set, period) → Payslip` — `packages/rules/src/interpreter.ts`
+- [x] Golden-set tests — `packages/rules/tests/golden/ng2026.spec.ts`, 5 tests, rates cross-verified against multiple independent sources (primary gazette could not be fetched directly in this environment — re-verify before using beyond this portfolio)
 
 **Phase 2 — Jurisdiction packs**
-- [ ] NG pack: PAYE bands + reliefs, pension, NHF, NSITF, ITF
-- [ ] KW pack: no income tax, PIFSS (nationals only, with ceiling), end-of-service accrual
-- [ ] Prove the engine handles both without a single jurisdiction-specific `if` in the interpreter
+- [x] NG pack: PAYE bands + rent relief, pension, NHF, NSITF, ITF — `packages/rules/src/jurisdictions/ng2026.ts`
+- [ ] KW pack: no income tax, PIFSS (nationals only, with ceiling), end-of-service accrual — cut from this week's scope, see `docs/SIX-DAY-PLAN.md`
+- [x] The interpreter itself has no jurisdiction-specific branching — proven in `packages/rules/tests/interpreter.spec.ts` against a synthetic rule set unrelated to either country. Not yet proven against a second *real* jurisdiction, since KW isn't built.
 
 **Phase 3 — Payroll runs**
 - [ ] Employees + effective-dated employment records

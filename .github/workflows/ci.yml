@@ -63,3 +63,11 @@ jobs:
           pnpm exec tsx scripts/create-db.ts
           pnpm run migrate
           pnpm run test
+
+      - name: rules — typecheck
+        working-directory: packages/rules
+        run: pnpm run typecheck
+
+      - name: rules — test
+        working-directory: packages/rules
+        run: pnpm run test
