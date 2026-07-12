@@ -187,14 +187,17 @@ Put the property tests in the README. "The trial balance sums to zero under a th
 
 ## Build state
 
-- [ ] Package scaffold, `Money` type with per-currency exponents
-- [ ] Schema: accounts, journal_entries, journal_lines + deferred balance trigger
-- [ ] `post()` with idempotency
-- [ ] `balance()`, `trialBalance()`
-- [ ] `reverse()`
-- [ ] Chart-of-accounts seeds for payroll, coop, hotel
-- [ ] Property tests (balance, drift, idempotency, reversal, KWD precision)
-- [ ] README with the four invariants stated plainly
+- [x] Package scaffold, `Money` type with per-currency exponents — `packages/ledger/src/money.ts`
+- [x] Schema: accounts, journal_entries, journal_lines + deferred balance trigger — `packages/ledger/migrations/0001_ledger.sql`
+- [x] `post()` with idempotency — `packages/ledger/src/ledger.ts`
+- [x] `balance()`, `trialBalance()`
+- [x] `reverse()`
+- [x] Chart-of-accounts seeds for payroll, coop, hotel — `packages/ledger/src/chartsOfAccounts.ts`
+- [x] Property tests (balance, drift, idempotency, reversal, KWD precision) — `packages/ledger/tests/ledger.spec.ts`, all green
+- [x] README with the four invariants stated plainly — `packages/ledger/README.md`
+
+Not yet built: `allocate()` (largest-remainder dividend/interest splitting, mentioned in the
+root README) belongs to `apps/coop` when that's built, not to this package.
 
 ## Never
 

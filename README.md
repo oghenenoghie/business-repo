@@ -19,10 +19,21 @@ apps/
 
 ## Status
 
-**Scaffold stage.** No application code has landed yet — this repository currently holds the
-project structure, specs, and build plan. See [`docs/SIX-DAY-PLAN.md`](docs/SIX-DAY-PLAN.md)
-for the build order and what's in scope for the first pass (Wagebook payroll, Nigeria only,
-on top of `core` and `ledger`), and each package/app `README.md` for its individual status.
+`packages/core` and `packages/ledger` are built and tested; the four apps haven't started.
+See [`docs/SIX-DAY-PLAN.md`](docs/SIX-DAY-PLAN.md) for the build order, and each package/app
+`README.md` for its individual status.
+
+**The RLS test result:** Org A provably cannot read Org B's rows —
+[`packages/core/tests/rls.spec.ts`](packages/core/tests/rls.spec.ts), 8 tests, all green.
+
+**The ledger result:** under 100 rounds of randomized balanced postings, the trial balance
+sums to exactly `0n` and every account balance matches an independent raw-SQL aggregate —
+[`packages/ledger/tests/ledger.spec.ts`](packages/ledger/tests/ledger.spec.ts), 8 tests, all
+green. A forged unbalanced entry that bypasses the application-layer check is still rejected
+by Postgres's deferred constraint trigger.
+
+CI (`.github/workflows/ci.yml`) runs both suites against a real Postgres service on every
+push and PR.
 
 ```mermaid
 graph TD
@@ -71,12 +82,17 @@ Full detail on each of these lives in [`.claude/skills/ledger-core/SKILL.md`](.c
 ```bash
 pnpm install
 docker compose up -d postgres redis
-pnpm --filter @bp/ledger test        # start here, once packages/ledger exists
-pnpm dev
+
+pnpm --filter @bp/core exec tsx scripts/create-db.ts
+pnpm --filter @bp/core run migrate
+pnpm --filter @bp/core test          # cross-tenant RLS suite
+
+pnpm --filter @bp/ledger exec tsx scripts/create-db.ts
+pnpm --filter @bp/ledger run migrate # applies core's migrations first, then ledger's
+pnpm --filter @bp/ledger test        # trial-balance property tests
 ```
 
-These commands are the target shape of the workflow; several of them have nothing to run
-against yet (see Status above).
+`pnpm dev` has nothing to run yet — no app has started (see Status above).
 
 ## Project context for AI assistants
 

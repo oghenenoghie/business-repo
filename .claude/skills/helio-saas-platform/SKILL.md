@@ -151,12 +151,21 @@ Enforce this in **three** layers: RLS (database), server action guard (`assertRo
 
 Update this every session. Fresh sessions read this first to know where to resume.
 
-**Phase 1 — Foundation**
-- [ ] `create-next-app`, TS strict, Tailwind + Helio tokens, shadcn/ui init
-- [ ] Supabase project, auth (magic link + Google)
-- [ ] Migration 001: orgs, memberships, invites, projects, audit_events
-- [ ] RLS policies + `has_org_role()` helper
-- [ ] `tests/rls.spec.ts` — cross-tenant isolation suite (**do not skip**)
+**Scope note:** this project became `packages/core` in the monorepo (see
+`GITHUB-SETUP.md`), which is narrower than the checklist below. `packages/core` targets a
+plain, self-hosted Postgres on the VPS — no Supabase, no Next.js app, no Stripe billing.
+Identity for RLS comes from an app-set session variable, not `auth.uid()`. The rest of this
+checklist (Next.js scaffold, Supabase auth, invites/projects tables, billing) describes the
+full standalone Helio product and is kept for reference, not as `packages/core`'s scope.
+
+**Phase 1 — Foundation (as `packages/core`)**
+- [ ] `create-next-app`, TS strict, Tailwind + Helio tokens, shadcn/ui init — N/A, `packages/core` has no UI
+- [ ] Supabase project, auth (magic link + Google) — N/A, no Supabase; auth is out of scope for this package
+- [x] Migration: orgs, memberships, audit_events — `packages/core/migrations/0001_core.sql` (no `invites`/`projects`; not needed yet)
+- [x] RLS policies + `has_org_role()` helper — same migration
+- [x] `tests/rls.spec.ts` — cross-tenant isolation suite, 8 tests, all green — `packages/core/tests/rls.spec.ts`
+- [x] `assertRole()` server guard — `packages/core/src/assertRole.ts`, tested in `packages/core/tests/assertRole.spec.ts`
+- [x] Audit event writer — `packages/core/src/audit.ts`
 
 **Phase 2 — Tenancy & RBAC**
 - [ ] Onboarding: create org, become owner
