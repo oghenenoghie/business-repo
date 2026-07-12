@@ -1,0 +1,51 @@
+@import "tailwindcss";
+
+:root {
+  --graphite: #14161a;
+  --surface: #1c1f26;
+  --line: #2a2f38;
+  --text: #e7e9ee;
+  --muted: #9ba3b0;
+  --iris: #6c5ce7;
+  --positive: #2fbf71;
+  --warning: #e0a526;
+  --danger: #e5484d;
+}
+
+body {
+  background: var(--graphite);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+th,
+td {
+  text-align: left;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--line);
+  font-size: 0.875rem;
+}
+
+th {
+  color: var(--muted);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  font-size: 0.7rem;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 1.25rem;
+}
+
+.mono {
+  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}

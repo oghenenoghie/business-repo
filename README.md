@@ -20,9 +20,13 @@ apps/
 
 ## Status
 
-`packages/core`, `packages/ledger`, and `packages/rules` are built and tested; the four apps
-haven't started. See [`docs/SIX-DAY-PLAN.md`](docs/SIX-DAY-PLAN.md) for the build order, and
-each package/app `README.md` for its individual status.
+`packages/core`, `packages/ledger`, `packages/rules`, and the `apps/payroll` run engine are
+built and tested. `apps/payroll` now also has a Next.js UI (demo login, dashboard, employees,
+payroll runs, payslip PDF) and a demo-org seed script, verified end-to-end locally. **Not yet
+deployed** — a live URL was attempted and blocked by a Vercel account/team permission error;
+see [`apps/payroll/README.md`](apps/payroll/README.md#deploying). See
+[`docs/SIX-DAY-PLAN.md`](docs/SIX-DAY-PLAN.md) for the build order, and each package/app
+`README.md` for its individual status.
 
 **The RLS test result:** Org A provably cannot read Org B's rows —
 [`packages/core/tests/rls.spec.ts`](packages/core/tests/rls.spec.ts), 8 tests, all green.
@@ -40,7 +44,14 @@ comments, plus a monotonicity property test —
 18 tests across the package, all green. Sources are cited in
 [`packages/rules/src/jurisdictions/ng2026.ts`](packages/rules/src/jurisdictions/ng2026.ts).
 
-CI (`.github/workflows/ci.yml`) runs all three suites (Postgres-backed where needed) on every
+**The payroll-run result:** a full run for 20 employees — `draft → calculated → posted`,
+mixed pension/NHF opt-in and rent relief, one balanced ledger entry posted per run, both
+immutability guards enforced (a posted run can't be recalculated or re-approved), and a
+payslip PDF rendered —
+[`apps/payroll/tests/payrollRun.spec.ts`](apps/payroll/tests/payrollRun.spec.ts), 4 tests,
+all green.
+
+CI (`.github/workflows/ci.yml`) runs all four suites (Postgres-backed where needed) on every
 push and PR.
 
 ```mermaid
@@ -102,9 +113,13 @@ pnpm --filter @bp/ledger run migrate # applies core's migrations first, then led
 pnpm --filter @bp/ledger test        # trial-balance property tests
 
 pnpm --filter @bp/rules test         # no database needed — pure computation
+
+pnpm --filter @bp/payroll exec tsx scripts/create-db.ts
+pnpm --filter @bp/payroll run migrate # applies core's, ledger's, then payroll's migrations
+pnpm --filter @bp/payroll test        # a full 20-employee run, draft -> calculated -> posted
 ```
 
-`pnpm dev` has nothing to run yet — no app has started (see Status above).
+`pnpm dev` has nothing to run yet — no UI or HTTP layer exists (see Status above).
 
 ## Project context for AI assistants
 

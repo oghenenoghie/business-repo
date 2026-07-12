@@ -17,6 +17,8 @@ export const CHARTS_OF_ACCOUNTS: Readonly<Record<"payroll" | "coop" | "hotel", r
     { code: "2200", name: "Pension Payable", type: "liability" },
     { code: "2300", name: "NHF Payable", type: "liability" },
     { code: "2400", name: "End-of-Service Provision", type: "liability" },
+    { code: "2500", name: "NSITF Payable", type: "liability" },
+    { code: "2600", name: "ITF Payable", type: "liability" },
     { code: "2900", name: "Net Pay Payable", type: "liability" },
   ],
   coop: [

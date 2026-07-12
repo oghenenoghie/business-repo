@@ -5,20 +5,21 @@ import pg from "pg";
 
 const { Client } = pg;
 
-const packageRoot = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
+const appRoot = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 
-// An app database is core's schema + ledger's schema (+ the app's own),
-// composed together (see the root README: "one database per app"). Ledger's
-// RLS policies call core's has_org_role(), which queries core's
-// `memberships` table — so a from-scratch database needs core's migrations
-// applied first.
+// Wagebook's database is core's schema + ledger's schema + this app's own
+// (see the root README: "one database per app"). Payroll runs are
+// org-scoped through core's has_org_role() and post through ledger's
+// accounts/journal_entries, so a from-scratch database needs both applied
+// first.
 const migrationSets = [
-  { pkg: "core", dir: path.join(packageRoot, "..", "core", "migrations") },
-  { pkg: "ledger", dir: path.join(packageRoot, "migrations") },
+  { pkg: "core", dir: path.join(appRoot, "..", "..", "packages", "core", "migrations") },
+  { pkg: "ledger", dir: path.join(appRoot, "..", "..", "packages", "ledger", "migrations") },
+  { pkg: "payroll", dir: path.join(appRoot, "migrations") },
 ];
 
 async function main() {
-  const databaseUrl = process.env.DATABASE_URL ?? "postgres://postgres:postgres@localhost:5432/bp_ledger";
+  const databaseUrl = process.env.DATABASE_URL ?? "postgres://postgres:postgres@localhost:5432/bp_payroll";
   // Defaults to "public" (existing behavior, unchanged for local/CI). Set to
   // e.g. "wagebook" when deploying into a shared database that already has
   // unrelated tables in "public".
@@ -59,8 +60,6 @@ async function main() {
       }
     }
 
-    // Local/dev/test convenience only — a real deployment rotates this
-    // outside version control and sets CORE_APP_USER_PASSWORD from a secret.
     const appUserPassword = process.env.CORE_APP_USER_PASSWORD ?? "app_user";
     const literal = `'${appUserPassword.replace(/'/g, "''")}'`;
     await client.query(`alter role app_user with password ${literal}`);

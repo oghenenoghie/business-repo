@@ -201,7 +201,7 @@ Add a property test too: for any employee and any jurisdiction, `gross - sum(ded
 ## Build state
 
 **Phase 0 — Shared core** (this is the old "Helio" work; do it once, three apps use it)
-- [x] Monorepo: `packages/core`, `packages/ledger`, `packages/rules`, `apps/payroll` (apps/payroll is still a stub)
+- [x] Monorepo: `packages/core`, `packages/ledger`, `packages/rules`, `apps/payroll` (apps/payroll has a run engine and a Next.js UI now)
 - [x] `core`: organizations, memberships, RBAC, RLS + `has_org_role()`, audit log
 - [x] `core`: cross-tenant RLS test suite — 8 tests, `packages/core/tests/rls.spec.ts`
 - [x] `ledger`: accounts, journal entries, journal lines; balanced-or-abort; append-only
@@ -220,15 +220,16 @@ Add a property test too: for any employee and any jurisdiction, `gross - sum(ded
 - [x] The interpreter itself has no jurisdiction-specific branching — proven in `packages/rules/tests/interpreter.spec.ts` against a synthetic rule set unrelated to either country. Not yet proven against a second *real* jurisdiction, since KW isn't built.
 
 **Phase 3 — Payroll runs**
-- [ ] Employees + effective-dated employment records
-- [ ] Run lifecycle: draft → calculated → approved → posted → paid
-- [ ] Immutability on approval; adjustment runs for corrections
-- [ ] `employee_snapshot` freezing
-- [ ] Ledger postings on approval
-- [ ] Variance screen (this run vs last)
+- [x] Employees + effective-dated employment records — `apps/payroll/src/employees.ts`, append-only, mirrors the ledger's discipline
+- [x] Run lifecycle: draft → calculated → posted (skipped a distinct "approved" step separate from posting — approving a run posts it in the same transaction; "paid" is not modeled, that's a bank-file/reconciliation concern for Phase 4)
+- [x] Immutability: `calculateRun()` only runs from `draft`, `approveAndPostRun()` only from `calculated` — proven in `apps/payroll/tests/payrollRun.spec.ts` (recalculating or re-approving a posted run throws)
+- [ ] Adjustment runs for corrections — the guard against mutating a posted run exists; the adjustment-run flow to actually correct one doesn't yet
+- [x] `employee_snapshot` freezing — `payslips.employee_snapshot`, set at calculation time
+- [x] Ledger postings — one balanced entry per run (aggregated across all employees' payslip lines), idempotent on `payroll:${runId}`
+- [ ] Variance screen (this run vs last) — no UI exists yet
 
 **Phase 4 — Outputs**
-- [ ] Payslip PDF
+- [x] Payslip PDF — `apps/payroll/src/payslipPdf.ts`, plain and unbranded (pdfkit)
 - [ ] Bank payment file (NG) + WPS file (KW) — pluggable exporters
 - [ ] Statutory schedules (PAYE remittance, pension schedule)
 - [ ] Employee self-service portal
@@ -239,11 +240,11 @@ Add a property test too: for any employee and any jurisdiction, `gross - sum(ded
 - [ ] Headcount cost reporting
 
 **Phase 6 — Proof**
-- [ ] Golden-set suite green in CI, with sources cited
-- [ ] Property tests: gross − deductions = net; every journal entry balances
-- [ ] Seed a demo org with ~40 employees across both jurisdictions
-- [ ] README leading with reproducibility + integer money + rules-as-data
-- [ ] Deploy with a demo login
+- [x] Golden-set suite green in CI, with sources cited
+- [x] Property tests: gross − deductions = net (`interpreter.spec.ts`); every journal entry balances (`ledger.spec.ts`, `payrollRun.spec.ts`)
+- [x] Seed a demo org — `apps/payroll/scripts/seed-demo.ts`: 22 employees, NG only (no KW jurisdiction pack to seed against yet), a full posted 2026-03 run
+- [x] README leading with reproducibility + integer money + rules-as-data
+- [ ] Deploy with a demo login — UI, demo-login flow, and seed script are built and verified end-to-end locally (Playwright: login → dashboard → employees → payroll → PDF); a live URL was attempted against a Supabase-hosted Postgres (isolated in its own `wagebook` schema) and Vercel, but blocked by a 403 "You don't have permission to create a Production/Preview Deployment" on the connected Vercel account/team — see `apps/payroll/README.md#deploying`. No demo URL exists yet.
 
 ## What Patrick needs to provide
 
