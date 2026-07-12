@@ -8,7 +8,12 @@ function getPool(): pg.Pool {
   if (!pool) {
     const connectionString =
       process.env.APP_DATABASE_URL ?? "postgres://app_user:app_user@localhost:5432/bp_core";
-    pool = new Pool({ connectionString });
+    // node-postgres's own sslmode=require handling still verifies the chain
+    // against Node's default CA store, which doesn't carry hosted Postgres
+    // providers' (e.g. Supabase's pooler) intermediate certs — set this
+    // explicitly rather than relying on that undocumented parsing.
+    const ssl = /\bsslmode=require\b/.test(connectionString) ? { rejectUnauthorized: false } : undefined;
+    pool = new Pool({ connectionString, ssl });
   }
   return pool;
 }
