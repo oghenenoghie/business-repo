@@ -1,0 +1,9 @@
+{
+  "name": "business-platform",
+  "private": true,
+  "description": "Multi-tenant business systems platform: shared core + double-entry ledger, with payroll, cooperative, hotel, and school apps.",
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "pnpm@9.0.0"
+}
