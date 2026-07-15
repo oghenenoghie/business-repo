@@ -28,9 +28,11 @@ see [`apps/payroll/README.md`](apps/payroll/README.md#deploying).
 
 `apps/coop`, `apps/hotel`, and `apps/school` — cut from the six-day scope, but now have their
 full database layer built ahead of schedule: schema, RLS, and migrations for all three, each
-with its own flagship database-level proof (below). No application code yet for any of the
-three. See [`docs/SIX-DAY-PLAN.md`](docs/SIX-DAY-PLAN.md) for the original build order, and
-each package/app `README.md` for its individual status.
+with its own flagship database-level proof (below). `apps/coop` now also has a working Phase 1
+UI on top of that (demo login, dashboard, member roster, member statement, contributions
+posting run) and a demo seed script; `apps/hotel` and `apps/school` have no application code
+yet. See [`docs/SIX-DAY-PLAN.md`](docs/SIX-DAY-PLAN.md) for the original build order, and each
+package/app `README.md` for its individual status.
 
 **The RLS test result:** Org A provably cannot read Org B's rows —
 [`packages/core/tests/rls.spec.ts`](packages/core/tests/rls.spec.ts), 8 tests, all green.
