@@ -6,14 +6,17 @@ let pool: pg.Pool | undefined;
 
 function getPool(): pg.Pool {
   if (!pool) {
-    // APP_DATABASE_URL is this app's own config; POSTGRES_URL / POSTGRES_URL_NON_POOLING
-    // are what the Vercel-Supabase integration writes automatically when connected —
-    // accepting them as fallbacks means connecting that integration is enough to fix
-    // env vars, with no manual aliasing step in Vercel's dashboard.
+    // APP_DATABASE_URL is this app's own config; the rest are what Vercel's storage
+    // integrations write automatically when connected (POSTGRES_URL* from the
+    // Vercel-Supabase integration, DATABASE_URL* from Vercel Postgres/Neon) —
+    // accepting them as fallbacks means connecting either integration is enough to
+    // fix env vars, with no manual aliasing step in Vercel's dashboard.
     const rawConnectionString =
       process.env.APP_DATABASE_URL ??
       process.env.POSTGRES_URL ??
       process.env.POSTGRES_URL_NON_POOLING ??
+      process.env.DATABASE_URL ??
+      process.env.DATABASE_URL_UNPOOLED ??
       "postgres://app_user:app_user@localhost:5432/bp_core";
     const url = new URL(rawConnectionString);
     const requiresTls = url.searchParams.get("sslmode") === "require";
