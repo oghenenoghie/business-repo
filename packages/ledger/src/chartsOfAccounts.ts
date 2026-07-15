@@ -10,7 +10,7 @@ export interface AccountSeed {
 
 // 1xxx Assets · 2xxx Liabilities · 3xxx Equity · 4xxx Revenue · 6xxx Expenses —
 // conventional numbering so an accountant can read the chart without a manual.
-export const CHARTS_OF_ACCOUNTS: Readonly<Record<"payroll" | "coop" | "hotel", readonly AccountSeed[]>> = {
+export const CHARTS_OF_ACCOUNTS: Readonly<Record<"payroll" | "coop" | "hotel" | "school", readonly AccountSeed[]>> = {
   payroll: [
     { code: "6000", name: "Salary Expense", type: "expense" },
     { code: "2100", name: "PAYE Payable", type: "liability" },
@@ -33,11 +33,19 @@ export const CHARTS_OF_ACCOUNTS: Readonly<Record<"payroll" | "coop" | "hotel", r
     { code: "6200", name: "Bad Debt", type: "expense" },
   ],
   hotel: [
+    { code: "1000", name: "Bank", type: "asset" },
     { code: "1200", name: "Guest Folios (AR)", type: "asset" },
     { code: "4000", name: "Room Revenue", type: "revenue" },
     { code: "4100", name: "F&B Revenue", type: "revenue" },
     { code: "2500", name: "Tax Payable", type: "liability" },
     { code: "2600", name: "Deposits Held", type: "liability" },
+  ],
+  school: [
+    { code: "1000", name: "Bank", type: "asset" },
+    { code: "1200", name: "Student Receivable", type: "asset" },
+    { code: "4000", name: "Tuition Revenue", type: "revenue" },
+    { code: "4100", name: "Levy Revenue", type: "revenue" },
+    { code: "6100", name: "Scholarships & Waivers", type: "expense" },
   ],
 };
 
