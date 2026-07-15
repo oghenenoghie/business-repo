@@ -95,6 +95,17 @@ project."* This is an account/team role or billing restriction on the connected 
 account, not a code issue — resolving it (checking the team member role, or deploying under
 a different account/team) is the next step before a live demo URL exists.
 
+Once deployed, don't point `APP_DATABASE_URL` at Supabase's direct `db.<ref>.supabase.co`
+host — it resolves IPv6-only, which Vercel's serverless runtime can't reach
+(`getaddrinfo ENOTFOUND`). Use Supabase's **connection pooler** host instead (Supabase
+dashboard → Project Settings → Database → Connection string → "Transaction" mode, port
+6543 — IPv4). Easiest path: connect the official Vercel↔Supabase integration (from either
+project's dashboard, under Integrations), which keeps `POSTGRES_URL` /
+`POSTGRES_URL_NON_POOLING` synced automatically and re-syncs them if Supabase credentials
+rotate — `packages/core/src/db.ts` falls back to `POSTGRES_URL` (pooled) when
+`APP_DATABASE_URL` isn't set, so no extra aliasing is needed once that integration is
+connected.
+
 ## Project context for AI assistants
 
 Full spec and phase-by-phase Build State checklist:
