@@ -22,11 +22,18 @@ apps/
 
 `packages/core`, `packages/ledger`, `packages/rules`, and the `apps/payroll` run engine are
 built and tested. `apps/payroll` now also has a Next.js UI (demo login, dashboard, employees,
-payroll runs, payslip PDF) and a demo-org seed script, verified end-to-end locally. **Not yet
-deployed** — a live URL was attempted and blocked by a Vercel account/team permission error;
-see [`apps/payroll/README.md`](apps/payroll/README.md#deploying). See
-[`docs/SIX-DAY-PLAN.md`](docs/SIX-DAY-PLAN.md) for the build order, and each package/app
-`README.md` for its individual status.
+payroll runs, payslip PDF) and a demo-org seed script, verified end-to-end locally. **Deployed**
+on Vercel against a Postgres (Neon) database — migrated, RLS-scoped `app_user` role, demo org
+seeded (22 employees, a posted 2026-03 run); see
+[`apps/payroll/README.md`](apps/payroll/README.md#deploying) for the live URL and setup.
+
+`apps/coop`, `apps/hotel`, and `apps/school` — cut from the six-day scope, but now have their
+full database layer built ahead of schedule: schema, RLS, and migrations for all three, each
+with its own flagship database-level proof (below). `apps/coop` now also has a working Phase 1
+UI on top of that (demo login, dashboard, member roster, member statement, contributions
+posting run) and a demo seed script; `apps/hotel` and `apps/school` have no application code
+yet. See [`docs/SIX-DAY-PLAN.md`](docs/SIX-DAY-PLAN.md) for the original build order, and each
+package/app `README.md` for its individual status.
 
 **The RLS test result:** Org A provably cannot read Org B's rows —
 [`packages/core/tests/rls.spec.ts`](packages/core/tests/rls.spec.ts), 8 tests, all green.
@@ -51,7 +58,24 @@ payslip PDF rendered —
 [`apps/payroll/tests/payrollRun.spec.ts`](apps/payroll/tests/payrollRun.spec.ts), 4 tests,
 all green.
 
-CI (`.github/workflows/ci.yml`) runs all four suites (Postgres-backed where needed) on every
+**The coop RLS result:** the same cross-tenant proof as core's, for members, loans, and the
+join-based loan-child tables —
+[`apps/coop/tests/rls.spec.ts`](apps/coop/tests/rls.spec.ts), 6 tests, all green.
+
+**The hotel result:** a `reservations` exclusion constraint (`btree_gist`) makes selling the
+same room twice impossible at the database level — 50 concurrent bookings fired at one room,
+exactly one succeeds, the other 49 rejected by Postgres, no application-layer lock —
+[`apps/hotel/tests/concurrency.spec.ts`](apps/hotel/tests/concurrency.spec.ts), plus a same-day
+turnover and a post-cancellation rebooking both succeeding as they should — 9 tests, all green.
+
+**The school result:** the three hard timetable clash constraints (teacher/room/class, one
+period) are enforced by Postgres unique constraints on `timetable_slots` — 50 concurrent
+attempts to double-book one teacher in one period, exactly one succeeds, plus direct proofs
+for the room and class clash constraints —
+[`apps/school/tests/timetableClashes.spec.ts`](apps/school/tests/timetableClashes.spec.ts),
+9 tests, all green.
+
+CI (`.github/workflows/ci.yml`) runs all seven suites (Postgres-backed where needed) on every
 push and PR.
 
 ```mermaid
@@ -64,15 +88,16 @@ graph TD
     hotel[apps/hotel<br/>Portier]
     school[apps/school<br/>Termly]
     core --> payroll & coop & hotel & school
-    ledger --> payroll & coop & hotel
+    ledger --> payroll & coop & hotel & school
     rules --> payroll
 ```
 
 ## Why a monorepo
 
-`ledger` is used by payroll, coop, **and** hotel. In four separate repos that means four
-copies of the money code — you fix a rounding bug in one and forget the other three. That
-isn't hypothetical; it's the default outcome, and it's how financial bugs survive for years.
+`ledger` is used by payroll, coop, hotel, **and** school. In four separate repos that means
+four copies of the money code — you fix a rounding bug in one and forget the other three.
+That isn't hypothetical; it's the default outcome, and it's how financial bugs survive for
+years.
 
 Shared code, separate products. The apps are independent at runtime and share nothing but
 the packages. One Postgres server, one database per app. If the hotel crashes, payroll
@@ -117,6 +142,18 @@ pnpm --filter @bp/rules test         # no database needed — pure computation
 pnpm --filter @bp/payroll exec tsx scripts/create-db.ts
 pnpm --filter @bp/payroll run migrate # applies core's, ledger's, then payroll's migrations
 pnpm --filter @bp/payroll test        # a full 20-employee run, draft -> calculated -> posted
+
+pnpm --filter @bp/coop exec tsx scripts/create-db.ts
+pnpm --filter @bp/coop run migrate    # applies core's, ledger's, then coop's migrations
+pnpm --filter @bp/coop test           # cross-tenant RLS suite for members/loans/schedules
+
+pnpm --filter @bp/hotel exec tsx scripts/create-db.ts
+pnpm --filter @bp/hotel run migrate   # applies core's, ledger's, then hotel's migrations
+pnpm --filter @bp/hotel test          # RLS suite + the 50-concurrent-bookings exclusion test
+
+pnpm --filter @bp/school exec tsx scripts/create-db.ts
+pnpm --filter @bp/school run migrate  # applies core's, ledger's, then school's migrations
+pnpm --filter @bp/school test         # RLS suite + timetable clash-constraint tests
 ```
 
 `pnpm dev` has nothing to run yet — no UI or HTTP layer exists (see Status above).

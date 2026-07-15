@@ -78,22 +78,48 @@ pnpm --filter @bp/payroll dev
 
 ## Deploying
 
+**Live demo:** https://business-repo-payroll-j8le.vercel.app — pick a persona on the login
+screen (owner, admin, or viewer) to see the seeded demo org as they would.
+
 The app targets a shared Postgres instance via `TARGET_SCHEMA` (read by all three
 `migrate.ts` scripts — `packages/core`, `packages/ledger`, `apps/payroll`): set it to an
 app-specific schema name (e.g. `wagebook`) when deploying into a database that already hosts
 unrelated apps' tables in `public`, so nothing here ever touches another app's schema or
 grants. `APP_DATABASE_URL` at runtime then needs `?sslmode=require` for a hosted Postgres
-provider reachable only over TLS (e.g. Supabase's connection pooler), since `packages/core`'s
-`pg.Pool` doesn't set `ssl` on its own.
+provider reachable only over TLS, since `packages/core`'s `pg.Pool` doesn't set `ssl` on its
+own.
 
-A Vercel deployment (`vercel.json` with the `env.APP_DATABASE_URL` for the target database,
-`rootDirectory: "apps/payroll"`) was attempted against a live Supabase project (isolated in
-its own `wagebook` Postgres schema, with a dedicated `app_user` role scoped to only that
-schema — confirmed via `information_schema.role_table_grants`) but blocked by a 403 from
-Vercel: *"You don't have permission to create a Production/Preview Deployment for this
-project."* This is an account/team role or billing restriction on the connected Vercel
-account, not a code issue — resolving it (checking the team member role, or deploying under
-a different account/team) is the next step before a live demo URL exists.
+Deployed on Vercel, backed by **Vercel Postgres (Neon)**:
+
+1. Vercel dashboard → project → Storage → Create Database → Postgres, then connect it to the
+   project. This injects `DATABASE_URL`/`DATABASE_URL_UNPOOLED` (used only for running
+   migrations, below — `packages/core/src/db.ts` reads these as a fallback).
+2. Run migrations against that database, in dependency order, with a strong
+   `CORE_APP_USER_PASSWORD` (the default in `migrate.ts` is a placeholder Neon's control
+   plane rejects as too weak):
+   ```
+   DATABASE_URL=<neon owner connection string> CORE_APP_USER_PASSWORD=<strong password> pnpm --filter @bp/core migrate
+   DATABASE_URL=<neon owner connection string> CORE_APP_USER_PASSWORD=<strong password> pnpm --filter @bp/ledger migrate
+   DATABASE_URL=<neon owner connection string> CORE_APP_USER_PASSWORD=<strong password> pnpm --filter payroll migrate
+   ```
+3. Seed the demo org: `DATABASE_URL=<neon owner connection string> pnpm --filter @bp/payroll seed:demo`
+4. Set `APP_DATABASE_URL` in Vercel (Production **and** Preview) to a connection string using
+   the `app_user` role (not the Neon owner role) with the password from step 2, so the
+   deployed app actually runs under RLS instead of bypassing it as the table owner:
+   ```
+   postgresql://app_user:<password, percent-encoded if it contains reserved URL characters like #>@<neon-pooler-host>/<db>?sslmode=require
+   ```
+5. Redeploy.
+
+Two gotchas that cost real debugging time getting here:
+- A password containing `#` breaks `new URL()` in `db.ts` (`#` is the URL fragment
+  delimiter) — percent-encode it as `%23` in the connection string, or avoid that character
+  when generating the `app_user` password.
+- `packages/core`'s own `migrate.ts` and every downstream package/app's `migrate.ts` must
+  agree on how they key applied migrations in `schema_migrations` (`core/<file>`, not a bare
+  filename) — see the comment in `packages/core/scripts/migrate.ts` — otherwise running
+  core's migrate standalone and then a downstream one re-applies core's migration and
+  collides with objects that already exist.
 
 ## Project context for AI assistants
 
