@@ -8,6 +8,31 @@ importers:
 
   .: {}
 
+  apps/coop:
+    dependencies:
+      '@bp/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@bp/ledger':
+        specifier: workspace:*
+        version: link:../../packages/ledger
+      pg:
+        specifier: ^8.13.1
+        version: 8.22.0
+    devDependencies:
+      '@types/pg':
+        specifier: ^8.11.10
+        version: 8.20.0
+      tsx:
+        specifier: ^4.19.2
+        version: 4.23.0
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.8
+        version: 2.1.9(@types/node@26.1.1)(lightningcss@1.32.0)
+
   apps/payroll:
     dependencies:
       '@bp/core':

@@ -117,6 +117,10 @@ pnpm --filter @bp/rules test         # no database needed — pure computation
 pnpm --filter @bp/payroll exec tsx scripts/create-db.ts
 pnpm --filter @bp/payroll run migrate # applies core's, ledger's, then payroll's migrations
 pnpm --filter @bp/payroll test        # a full 20-employee run, draft -> calculated -> posted
+
+pnpm --filter @bp/coop exec tsx scripts/create-db.ts
+pnpm --filter @bp/coop run migrate    # applies core's, ledger's, then coop's migrations
+pnpm --filter @bp/coop test           # cross-tenant RLS suite for members/loans/schedules
 ```
 
 `pnpm dev` has nothing to run yet — no UI or HTTP layer exists (see Status above).
