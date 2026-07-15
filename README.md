@@ -22,9 +22,10 @@ apps/
 
 `packages/core`, `packages/ledger`, `packages/rules`, and the `apps/payroll` run engine are
 built and tested. `apps/payroll` now also has a Next.js UI (demo login, dashboard, employees,
-payroll runs, payslip PDF) and a demo-org seed script, verified end-to-end locally. **Not yet
-deployed** — a live URL was attempted and blocked by a Vercel account/team permission error;
-see [`apps/payroll/README.md`](apps/payroll/README.md#deploying).
+payroll runs, payslip PDF) and a demo-org seed script, verified end-to-end locally. **Deployed**
+on Vercel against a Postgres (Neon) database — migrated, RLS-scoped `app_user` role, demo org
+seeded (22 employees, a posted 2026-03 run); see
+[`apps/payroll/README.md`](apps/payroll/README.md#deploying) for the live URL and setup.
 
 `apps/coop`, `apps/hotel`, and `apps/school` — cut from the six-day scope, but now have their
 full database layer built ahead of schedule: schema, RLS, and migrations for all three, each

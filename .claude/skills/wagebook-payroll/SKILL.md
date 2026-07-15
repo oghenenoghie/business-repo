@@ -244,7 +244,7 @@ Add a property test too: for any employee and any jurisdiction, `gross - sum(ded
 - [x] Property tests: gross − deductions = net (`interpreter.spec.ts`); every journal entry balances (`ledger.spec.ts`, `payrollRun.spec.ts`)
 - [x] Seed a demo org — `apps/payroll/scripts/seed-demo.ts`: 22 employees, NG only (no KW jurisdiction pack to seed against yet), a full posted 2026-03 run
 - [x] README leading with reproducibility + integer money + rules-as-data
-- [ ] Deploy with a demo login — UI, demo-login flow, and seed script are built and verified end-to-end locally (Playwright: login → dashboard → employees → payroll → PDF); a live URL was attempted against a Supabase-hosted Postgres (isolated in its own `wagebook` schema) and Vercel, but blocked by a 403 "You don't have permission to create a Production/Preview Deployment" on the connected Vercel account/team — see `apps/payroll/README.md#deploying`. No demo URL exists yet.
+- [x] Deploy with a demo login — live at https://business-repo-payroll-j8le.vercel.app, backed by Vercel Postgres (Neon): migrated (`core` → `ledger` → `payroll`), RLS-scoped `app_user` role wired via `APP_DATABASE_URL`, demo org seeded (22 employees, a posted 2026-03 run). See `apps/payroll/README.md#deploying` for the setup steps and the two gotchas hit getting there (a `#` in the `app_user` password breaking `new URL()`; a migration-tracking key mismatch between `core`'s standalone migrate and downstream packages').
 
 ## What Patrick needs to provide
 
