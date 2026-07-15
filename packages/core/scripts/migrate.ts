@@ -32,18 +32,25 @@ async function main() {
     const files = (await readdir(dir)).filter((f) => f.endsWith(".sql")).sort();
 
     for (const file of files) {
-      const { rows } = await client.query("select 1 from schema_migrations where filename = $1", [file]);
+      // Keyed as "core/<file>" to match how downstream packages' migrate
+      // scripts (ledger, payroll, coop, hotel, school) record core's
+      // migrations when they apply core + their own migrations together
+      // against a shared database — otherwise running this script standalone
+      // and then a downstream one reapplies core's migrations and collides
+      // with objects that already exist.
+      const key = `core/${file}`;
+      const { rows } = await client.query("select 1 from schema_migrations where filename = $1", [key]);
       if (rows.length > 0) continue;
 
       const rawSql = await readFile(path.join(dir, file), "utf8");
       // The only schema-qualified statements in these files are the trailing
       // GRANTs — everything else resolves through search_path above.
       const sql = rawSql.replaceAll("schema public", `schema "${schema}"`);
-      console.log(`applying ${file} into schema "${schema}"`);
+      console.log(`applying ${key} into schema "${schema}"`);
       await client.query("begin");
       try {
         await client.query(sql);
-        await client.query("insert into schema_migrations (filename) values ($1)", [file]);
+        await client.query("insert into schema_migrations (filename) values ($1)", [key]);
         await client.query("commit");
       } catch (err) {
         await client.query("rollback");
