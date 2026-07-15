@@ -6,15 +6,12 @@ let pool: pg.Pool | undefined;
 
 function getPool(): pg.Pool {
   if (!pool) {
-    // APP_DATABASE_URL is this app's own config; the rest are what Vercel's storage
-    // integrations write automatically when connected (POSTGRES_URL* from the
-    // Vercel-Supabase integration, DATABASE_URL* from Vercel Postgres/Neon) —
-    // accepting them as fallbacks means connecting either integration is enough to
-    // fix env vars, with no manual aliasing step in Vercel's dashboard.
+    // APP_DATABASE_URL is this app's own config; DATABASE_URL / DATABASE_URL_UNPOOLED
+    // are what Vercel's Postgres (Neon) integration writes automatically when
+    // connected — accepting them as fallbacks means connecting that integration is
+    // enough to fix env vars, with no manual aliasing step in Vercel's dashboard.
     const rawConnectionString =
       process.env.APP_DATABASE_URL ??
-      process.env.POSTGRES_URL ??
-      process.env.POSTGRES_URL_NON_POOLING ??
       process.env.DATABASE_URL ??
       process.env.DATABASE_URL_UNPOOLED ??
       "postgres://app_user:app_user@localhost:5432/bp_core";
@@ -25,8 +22,8 @@ function getPool(): pg.Pool {
     // in the URL silently overrides any explicit `ssl` option passed
     // alongside it (and pg's own sslmode handling still verifies the chain
     // against Node's default CA store, which doesn't carry hosted Postgres
-    // providers' e.g. Supabase's pooler intermediate certs). Strip it from
-    // the URL so only the explicit `ssl` option below takes effect.
+    // providers' intermediate certs). Strip it from the URL so only the
+    // explicit `ssl` option below takes effect.
     url.searchParams.delete("sslmode");
     const connectionString = url.toString();
     const ssl = requiresTls ? { rejectUnauthorized: false } : undefined;
