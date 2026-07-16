@@ -118,6 +118,8 @@ export interface RepaymentScheduleRow extends ScheduleInstallment {
   id: string;
   loanId: string;
   generation: number;
+  /** Set once an interest accrual run recognizes this installment's interest early — see interestAccrual.ts. */
+  accruedAt: string | null;
 }
 
 export interface Repayment {
@@ -139,4 +141,56 @@ export interface ArrearsRow {
   amountDue: bigint;
   daysOverdue: number;
   bucket: "current" | "30" | "60" | "90+";
+}
+
+/**
+ * Serializable form of EligibilityResult for crossing the server-action
+ * boundary to a client component — bigint fields stringified.
+ */
+export interface EligibilityCheck {
+  savingsBalance: string;
+  multiplier: number;
+  outstandingPrincipal: string;
+  guaranteedExposure: string;
+  availableToBorrow: string;
+  requestedAmount: string;
+  eligible: boolean;
+}
+
+export interface InterestAccrualRun {
+  id: string;
+  orgId: string;
+  runDate: string;
+  amount: bigint;
+  journalEntryId: string | null;
+}
+
+export type DividendBasis = "savings" | "share_capital" | "patronage";
+export type DividendRunStatus = "draft" | "allocated" | "approved" | "posted";
+
+export interface DividendRun {
+  id: string;
+  orgId: string;
+  financialYear: number;
+  distributableSurplus: bigint;
+  basis: DividendBasis;
+  status: DividendRunStatus;
+  journalEntryId: string | null;
+  approvedBy: string | null;
+  approvedAt: string | null;
+}
+
+export interface NewDividendRunInput {
+  orgId: string;
+  financialYear: number;
+  distributableSurplus: bigint;
+  basis: DividendBasis;
+}
+
+export interface DividendAllocation {
+  id: string;
+  runId: string;
+  memberId: string;
+  basisAmount: bigint;
+  allocated: bigint;
 }
