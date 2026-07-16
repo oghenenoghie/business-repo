@@ -14,16 +14,18 @@ ledger's own independent account balance), plus a demo Next.js UI — login, das
 roster with per-member ledger-derived balances, a member statement page, and a contributions
 posting run.
 
-Phase 2 (loans) is built at the engine level: `src/loans.ts` — application, an eligibility
-engine (`savings × a configurable per-society multiplier − outstanding − guaranteed`),
-guarantors (a guarantee is itself subject to the guarantor's own eligibility check),
-flat-rate amortization (schedule generated at disbursement, immutable; the final installment
-absorbs any rounding residual so `sum(principalDue) === principal` exactly), disbursement and
-repayment ledger postings, and an arrears ageing report (30/60/90+ buckets) — proven end to
-end in `tests/loans.spec.ts` (full apply → guarantee → approve → disburse → repay lifecycle,
-the ledger's trial balance re-checked at every step). `reducing_balance` amortization is
-accepted by the schema but not yet implemented at the application layer. No loans UI yet —
-engine and tests only, same "logic first" order as `core`/`ledger`/`rules`.
+Phase 2 (loans) is now built end to end: `src/loans.ts` — application, an eligibility engine
+(`savings × a configurable per-society multiplier − outstanding − guaranteed`), guarantors (a
+guarantee is itself subject to the guarantor's own eligibility check), both flat-rate and
+reducing-balance amortization (schedule generated at disbursement, immutable; the final
+installment absorbs any rounding residual so `sum(principalDue) === principal` exactly),
+disbursement and repayment ledger postings, and an arrears ageing report (30/60/90+ buckets) —
+proven end to end in `tests/loans.spec.ts` (full apply → guarantee → approve → disburse → repay
+lifecycle for both amortization methods, the ledger's trial balance re-checked at every step).
+On top of that: a loans UI — `/loans` (pipeline + arrears banner), `/loans/new` (application
+form with a live eligibility check as the amount is typed), `/loans/[id]` (schedule, guarantors,
+approve/disburse/repay actions) — plus demo loans seeded in three pipeline states (pending,
+active with an overdue installment, fully repaid).
 
 Not yet built: dividends (Phase 3), the member self-service portal, loan write-off/rescheduling,
 bank-statement import. Depends on `packages/core` and `packages/ledger`.

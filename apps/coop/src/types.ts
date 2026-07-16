@@ -140,3 +140,17 @@ export interface ArrearsRow {
   daysOverdue: number;
   bucket: "current" | "30" | "60" | "90+";
 }
+
+/**
+ * Serializable form of EligibilityResult for crossing the server-action
+ * boundary to a client component — bigint fields stringified.
+ */
+export interface EligibilityCheck {
+  savingsBalance: string;
+  multiplier: number;
+  outstandingPrincipal: string;
+  guaranteedExposure: string;
+  availableToBorrow: string;
+  requestedAmount: string;
+  eligible: boolean;
+}

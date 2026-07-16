@@ -140,11 +140,12 @@ A member's savings balance is **derived from the ledger**, never stored in a col
 - [x] Loan application + eligibility engine (savings × multiplier − outstanding − guaranteed) — `src/loans.ts`, proven in `tests/loans.spec.ts`
 - [x] Guarantors, with encumbrance tracked against the guarantor's own savings — a guarantee is itself subject to the guarantor's own eligibility check
 - [x] Approval workflow — gated by `packages/core`'s existing owner/admin roles, not a dedicated treasurer/committee role (core has no such role; would need a `packages/core` RBAC change to add one)
-- [ ] Amortization: flat **and** reducing balance — flat only; `reducing_balance` is accepted by the schema's check constraint but rejected at the application layer (`UnsupportedMethodError`) since it isn't implemented
+- [x] Amortization: flat **and** reducing balance — `generateFlatSchedule()` and `generateReducingBalanceSchedule()`, both dispatched by `loan.method` at disbursement; reducing-balance is a standard annuity (fixed payment, interest on the declining balance), final installment absorbs the residual same as flat
 - [x] Disbursement → ledger
 - [x] Repayments, split principal/interest, → ledger — one full installment per `postRepayment()` call; partial payments aren't supported yet
 - [x] Arrears ageing report — `getArrearsReport()`, 30/60/90+ buckets
-- [ ] Loans/guarantors/repayments UI — engine and tests only so far, no screens yet (same "logic first" order as `core`/`ledger`/`rules`)
+- [x] Loans/guarantors/repayments UI — `/loans` (pipeline + arrears banner), `/loans/new` (application form with a live eligibility check as the amount is typed, via a server action called directly from a client component), `/loans/[id]` (schedule with paid/overdue/upcoming status, guarantors, approve/disburse/post-repayment actions gated by role and loan status)
+- [x] Fixed a latent bug the UI surfaced: `date`/`timestamptz` columns come back from `pg` as JS `Date` objects by default (same gotcha `members.ts` already worked around) — `loans.ts` now normalizes every date-ish field back to a string before it reaches a UI, so `due_date` comparisons and rendering are safe
 
 **Phase 3 — Year end**
 - [ ] Interest accrual run

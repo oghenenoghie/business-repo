@@ -39,13 +39,6 @@ export class InvalidLoanStateError extends Error {
   }
 }
 
-export class UnsupportedMethodError extends Error {
-  constructor(method: LoanMethod) {
-    super(`"${method}" amortization is not implemented yet — only "flat" is supported`);
-    this.name = "UnsupportedMethodError";
-  }
-}
-
 export async function getSavingsMultiplier(client: PoolClient, orgId: string): Promise<number> {
   const result = await client.query<{ savings_multiplier: string }>(
     "select savings_multiplier from society_settings where org_id = $1",
@@ -201,9 +194,56 @@ export function generateFlatSchedule(
   return installments;
 }
 
-export async function applyForLoan(client: PoolClient, input: LoanApplicationInput): Promise<Loan> {
-  if (input.method !== "flat") throw new UnsupportedMethodError(input.method);
+/**
+ * Reducing-balance (annuity) amortization: a fixed installment payment where
+ * interest each period is charged only on the outstanding principal, so the
+ * interest portion shrinks and the principal portion grows over the tenor.
+ * As with the flat schedule, the final installment absorbs whatever residual
+ * is left so that sum(principalDue) === principal exactly.
+ */
+export function generateReducingBalanceSchedule(
+  principal: bigint,
+  annualRate: number,
+  tenorMonths: number,
+  disbursementDate: string,
+): ScheduleInstallment[] {
+  if (tenorMonths < 1) throw new RangeError("tenorMonths must be at least 1");
 
+  const monthlyRate = annualRate / 12;
+  const principalNum = Number(principal);
+  const payment =
+    monthlyRate === 0 ? principalNum / tenorMonths : (principalNum * monthlyRate) / (1 - (1 + monthlyRate) ** -tenorMonths);
+  const paymentMinorUnits = BigInt(Math.round(payment));
+
+  const installments: ScheduleInstallment[] = [];
+  let outstanding = principal;
+  let principalRunning = 0n;
+
+  for (let i = 1; i <= tenorMonths; i++) {
+    const isLast = i === tenorMonths;
+    const interestDue = BigInt(Math.round(Number(outstanding) * monthlyRate));
+    const principalDue = isLast ? principal - principalRunning : paymentMinorUnits - interestDue;
+    principalRunning += principalDue;
+    outstanding -= principalDue;
+
+    installments.push({
+      installmentNo: i,
+      dueDate: addMonthsUtc(disbursementDate, i),
+      principalDue,
+      interestDue,
+    });
+  }
+
+  return installments;
+}
+
+function generateSchedule(loan: Pick<Loan, "method" | "principal" | "interestRate" | "tenorMonths">, disbursementDate: string): ScheduleInstallment[] {
+  return loan.method === "flat"
+    ? generateFlatSchedule(loan.principal, loan.interestRate, loan.tenorMonths, disbursementDate)
+    : generateReducingBalanceSchedule(loan.principal, loan.interestRate, loan.tenorMonths, disbursementDate);
+}
+
+export async function applyForLoan(client: PoolClient, input: LoanApplicationInput): Promise<Loan> {
   const eligibility = await checkEligibility(client, input.orgId, input.memberId, input.principal);
   if (!eligibility.eligible) throw new LoanEligibilityError(eligibility, "loan application rejected");
 
@@ -252,10 +292,9 @@ export async function approveLoan(client: PoolClient, loanId: string, approvedBy
 export async function disburseLoan(client: PoolClient, loanId: string): Promise<Loan> {
   const loan = await getLoanOrThrow(client, loanId);
   if (loan.status !== "approved") throw new InvalidLoanStateError(loanId, "approved", loan.status);
-  if (loan.method !== "flat") throw new UnsupportedMethodError(loan.method);
 
   const disbursementDate = new Date().toISOString().slice(0, 10);
-  const schedule = generateFlatSchedule(loan.principal, loan.interestRate, loan.tenorMonths, disbursementDate);
+  const schedule = generateSchedule(loan, disbursementDate);
 
   const entry = await post(client, {
     orgId: loan.orgId,
@@ -356,7 +395,7 @@ export async function getArrearsReport(client: PoolClient, orgId: string): Promi
     loan_id: string;
     member_id: string;
     installment_no: number;
-    due_date: string;
+    due_date: string | Date;
     principal_due: string;
     interest_due: string;
   }>(
@@ -380,7 +419,7 @@ export async function getArrearsReport(client: PoolClient, orgId: string): Promi
       loanId: row.loan_id,
       memberId: row.member_id,
       installmentNo: row.installment_no,
-      dueDate: row.due_date,
+      dueDate: toDateString(row.due_date),
       amountDue: BigInt(row.principal_due) + BigInt(row.interest_due),
       daysOverdue,
       bucket,
@@ -431,10 +470,13 @@ interface LoanRow {
   tenor_months: number;
   method: LoanMethod;
   status: Loan["status"];
-  applied_at: string;
+  // pg parses timestamptz columns to a JS Date by default, despite these
+  // types — toLoan() normalizes them back to ISO strings before they ever
+  // reach a UI (same convention as members.ts's toDateString).
+  applied_at: string | Date;
   approved_by: string | null;
-  approved_at: string | null;
-  disbursed_at: string | null;
+  approved_at: string | Date | null;
+  disbursed_at: string | Date | null;
   journal_entry_id: string | null;
 }
 
@@ -448,10 +490,10 @@ function toLoan(row: LoanRow): Loan {
     tenorMonths: row.tenor_months,
     method: row.method,
     status: row.status,
-    appliedAt: row.applied_at,
+    appliedAt: toTimestampString(row.applied_at),
     approvedBy: row.approved_by,
-    approvedAt: row.approved_at,
-    disbursedAt: row.disbursed_at,
+    approvedAt: row.approved_at === null ? null : toTimestampString(row.approved_at),
+    disbursedAt: row.disbursed_at === null ? null : toTimestampString(row.disbursed_at),
     journalEntryId: row.journal_entry_id,
   };
 }
@@ -477,7 +519,7 @@ interface RepaymentScheduleRowDb {
   loan_id: string;
   generation: number;
   installment_no: number;
-  due_date: string;
+  due_date: string | Date;
   principal_due: string;
   interest_due: string;
 }
@@ -488,7 +530,7 @@ function toScheduleRow(row: RepaymentScheduleRowDb): RepaymentScheduleRow {
     loanId: row.loan_id,
     generation: row.generation,
     installmentNo: row.installment_no,
-    dueDate: row.due_date,
+    dueDate: toDateString(row.due_date),
     principalDue: BigInt(row.principal_due),
     interestDue: BigInt(row.interest_due),
   };
@@ -501,7 +543,7 @@ interface RepaymentRow {
   amount: string;
   principal_portion: string;
   interest_portion: string;
-  paid_at: string;
+  paid_at: string | Date;
   journal_entry_id: string | null;
 }
 
@@ -513,7 +555,15 @@ function toRepayment(row: RepaymentRow): Repayment {
     amount: BigInt(row.amount),
     principalPortion: BigInt(row.principal_portion),
     interestPortion: BigInt(row.interest_portion),
-    paidAt: row.paid_at,
+    paidAt: toTimestampString(row.paid_at),
     journalEntryId: row.journal_entry_id,
   };
+}
+
+function toDateString(value: string | Date): string {
+  return value instanceof Date ? value.toISOString().slice(0, 10) : value;
+}
+
+function toTimestampString(value: string | Date): string {
+  return value instanceof Date ? value.toISOString() : value;
 }
