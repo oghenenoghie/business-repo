@@ -26,6 +26,9 @@ export function Nav({ persona }: { persona: DemoPersona }) {
       <Link href="/loans" style={{ color: "var(--muted)" }}>
         Loans
       </Link>
+      <Link href="/reports" style={{ color: "var(--muted)" }}>
+        Reports
+      </Link>
       <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: "1rem" }}>
         <span style={{ color: "var(--muted)", fontSize: "0.85rem" }}>
           {persona.name} <span style={{ textTransform: "uppercase" }}>({persona.role})</span>

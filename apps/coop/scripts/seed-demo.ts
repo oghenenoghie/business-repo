@@ -5,6 +5,8 @@ import { DEMO_ADMIN_ID, DEMO_OWNER_ID, DEMO_VIEWER_ID } from "../src/demoPersona
 import { createMember } from "../src/members.js";
 import { postContribution } from "../src/contributions.js";
 import { applyForLoan, approveLoan, disburseLoan, postRepayment } from "../src/loans.js";
+import { runInterestAccrual } from "../src/interestAccrual.js";
+import { allocateDividends, approveDividendRun, createDividendRun, postDividendRun } from "../src/dividends.js";
 
 const { Client } = pg;
 
@@ -162,6 +164,26 @@ async function main() {
       await withUserContext(DEMO_OWNER_ID, (client) => postRepayment(client, { loanId: repaidLoan.id }));
     }
     console.log("3 demo loans seeded: pending, active with arrears, fully repaid");
+
+    // An interest accrual run against the overdue installment above, and a
+    // full dividend run (create -> allocate -> approve -> post), so /reports
+    // has real data to show instead of empty tables.
+    const asOfDate = new Date().toISOString().slice(0, 10);
+    await withUserContext(DEMO_OWNER_ID, (client) => runInterestAccrual(client, orgId, asOfDate));
+    console.log("interest accrual run seeded");
+
+    const dividendRun = await withUserContext(DEMO_OWNER_ID, (client) =>
+      createDividendRun(client, {
+        orgId,
+        financialYear: SEED_YEAR - 1,
+        distributableSurplus: 500_000_00n,
+        basis: "savings",
+      }),
+    );
+    await withUserContext(DEMO_OWNER_ID, (client) => allocateDividends(client, dividendRun.id));
+    await withUserContext(DEMO_OWNER_ID, (client) => approveDividendRun(client, dividendRun.id, DEMO_OWNER_ID));
+    await withUserContext(DEMO_OWNER_ID, (client) => postDividendRun(client, dividendRun.id));
+    console.log(`dividend run seeded for FY${SEED_YEAR - 1}`);
 
     console.log("done");
     console.log(`login as: owner=${DEMO_OWNER_ID} admin=${DEMO_ADMIN_ID} viewer=${DEMO_VIEWER_ID}`);

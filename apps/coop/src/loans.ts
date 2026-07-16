@@ -331,8 +331,10 @@ export interface RepaymentInput {
 /**
  * Pays the loan's next unpaid installment in full (partial payments aren't
  * supported yet). Posts one balanced entry: Dr Bank for the whole amount,
- * Cr Loans Receivable for the principal portion, Cr Interest Income for the
- * interest portion.
+ * Cr Loans Receivable for the principal portion. The interest portion is
+ * credited to Interest Income (cash basis) unless an interest accrual run
+ * already recognized it — see interestAccrual.ts — in which case it credits
+ * Interest Receivable instead, so income is never counted twice.
  */
 export async function postRepayment(client: PoolClient, input: RepaymentInput): Promise<Repayment> {
   const loan = await getLoanOrThrow(client, input.loanId);
@@ -354,6 +356,7 @@ export async function postRepayment(client: PoolClient, input: RepaymentInput): 
   const interestPortion = BigInt(nextInstallment.interest_due);
   const amount = principalPortion + interestPortion;
   const paidAt = new Date().toISOString().slice(0, 10);
+  const interestAccount = nextInstallment.accrued_at !== null ? "1150" : "4100";
 
   const entry = await post(client, {
     orgId: loan.orgId,
@@ -365,7 +368,7 @@ export async function postRepayment(client: PoolClient, input: RepaymentInput): 
     lines: [
       { account: "1000", amount },
       { account: "1100", amount: -principalPortion },
-      { account: "4100", amount: -interestPortion },
+      { account: interestAccount, amount: -interestPortion },
     ],
   });
 
@@ -522,6 +525,7 @@ interface RepaymentScheduleRowDb {
   due_date: string | Date;
   principal_due: string;
   interest_due: string;
+  accrued_at: string | Date | null;
 }
 
 function toScheduleRow(row: RepaymentScheduleRowDb): RepaymentScheduleRow {
@@ -533,6 +537,7 @@ function toScheduleRow(row: RepaymentScheduleRowDb): RepaymentScheduleRow {
     dueDate: toDateString(row.due_date),
     principalDue: BigInt(row.principal_due),
     interestDue: BigInt(row.interest_due),
+    accruedAt: row.accrued_at === null ? null : toTimestampString(row.accrued_at),
   };
 }
 

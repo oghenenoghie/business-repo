@@ -20,6 +20,19 @@ export {
   getRepaymentSchedule,
   listGuarantors,
 } from "./loans.js";
+export { runInterestAccrual, listInterestAccrualRuns } from "./interestAccrual.js";
+export {
+  UnsupportedDividendBasisError,
+  InvalidDividendRunStateError,
+  DividendReconciliationError,
+  createDividendRun,
+  allocateDividends,
+  approveDividendRun,
+  postDividendRun,
+  listDividendRuns,
+  getDividendRun,
+  getDividendAllocations,
+} from "./dividends.js";
 export type {
   Member,
   MemberStatus,
@@ -39,6 +52,13 @@ export type {
   RepaymentScheduleRow,
   Repayment,
   ArrearsRow,
+  InterestAccrualRun,
+  DividendBasis,
+  DividendRunStatus,
+  DividendRun,
+  NewDividendRunInput,
+  DividendAllocation,
 } from "./types.js";
 
-// Dividend application logic lands in Phase 3 — see .claude/skills/ajo-cooperative/SKILL.md.
+// Loan write-off/rescheduling and the member self-service portal land in
+// Phase 4 — see .claude/skills/ajo-cooperative/SKILL.md.

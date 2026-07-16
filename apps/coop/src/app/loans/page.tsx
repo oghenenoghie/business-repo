@@ -20,11 +20,13 @@ const STATUS_COLOR: Record<string, string> = {
   rescheduled: "var(--muted)",
 };
 
+// getArrearsReport only returns installments already past due — "current"
+// means overdue but under 30 days, not "not yet due".
 const BUCKET_LABEL: Record<string, string> = {
-  current: "not yet due",
-  "30": "30+ days",
-  "60": "60+ days",
-  "90+": "90+ days",
+  current: "<30 days overdue",
+  "30": "30-59 days overdue",
+  "60": "60-89 days overdue",
+  "90+": "90+ days overdue",
 };
 
 export default async function LoansPage() {
