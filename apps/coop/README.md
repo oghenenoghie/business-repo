@@ -6,13 +6,27 @@ Cooperative society: member savings, loans, and dividends. **Cut from the six-da
 **Status:** Phase 1 (members & savings) has a working UI on top of the full database layer.
 `migrations/0001_coop.sql` has the full schema — members, contributions, share capital, loans,
 repayment schedules, guarantors, dividend runs and allocations — with RLS mirroring
-`packages/core`'s pattern. On top of that: `src/members.ts`, `src/contributions.ts`, and
+`packages/core`'s pattern; `migrations/0002_society_settings.sql` adds a per-society loan
+eligibility multiplier. On top of that: `src/members.ts`, `src/contributions.ts`, and
 `src/statement.ts` (a member's savings balance and transaction history, derived entirely from
 the ledger, never a stored column — proven in `tests/contributions.spec.ts` against the
 ledger's own independent account balance), plus a demo Next.js UI — login, dashboard, member
 roster with per-member ledger-derived balances, a member statement page, and a contributions
-posting run. Not yet built: loans (eligibility engine, amortization, guarantors), dividends,
-the member self-service portal. Depends on `packages/core` and `packages/ledger`.
+posting run.
+
+Phase 2 (loans) is built at the engine level: `src/loans.ts` — application, an eligibility
+engine (`savings × a configurable per-society multiplier − outstanding − guaranteed`),
+guarantors (a guarantee is itself subject to the guarantor's own eligibility check),
+flat-rate amortization (schedule generated at disbursement, immutable; the final installment
+absorbs any rounding residual so `sum(principalDue) === principal` exactly), disbursement and
+repayment ledger postings, and an arrears ageing report (30/60/90+ buckets) — proven end to
+end in `tests/loans.spec.ts` (full apply → guarantee → approve → disburse → repay lifecycle,
+the ledger's trial balance re-checked at every step). `reducing_balance` amortization is
+accepted by the schema but not yet implemented at the application layer. No loans UI yet —
+engine and tests only, same "logic first" order as `core`/`ledger`/`rules`.
+
+Not yet built: dividends (Phase 3), the member self-service portal, loan write-off/rescheduling,
+bank-statement import. Depends on `packages/core` and `packages/ledger`.
 
 ```bash
 pnpm install

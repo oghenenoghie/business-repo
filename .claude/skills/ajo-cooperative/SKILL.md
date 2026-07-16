@@ -130,19 +130,21 @@ A member's savings balance is **derived from the ledger**, never stored in a col
 ## Build state
 
 **Phase 1 — Members & savings**
-- [ ] Built on `packages/core` (tenancy, RBAC, audit) — do not rebuild it
-- [ ] Members, share capital, membership lifecycle
-- [ ] Contributions with ledger posting
-- [ ] Member statement, derived entirely from the ledger
+- [x] Built on `packages/core` (tenancy, RBAC, audit) — do not rebuild it
+- [x] Members, membership lifecycle — `share_capital` table exists in the schema but no application code writes to it yet
+- [x] Contributions with ledger posting — `src/contributions.ts`
+- [x] Member statement, derived entirely from the ledger — `src/statement.ts`
+- [x] Demo login + UI: dashboard, member roster, member statement, contributions posting — same shape as `apps/payroll`
 
 **Phase 2 — Loans**
-- [ ] Loan application + eligibility engine (savings × multiplier − outstanding − guaranteed)
-- [ ] Guarantors, with encumbrance tracked against the guarantor's own savings
-- [ ] Approval workflow (RBAC: treasurer/committee)
-- [ ] Amortization: flat **and** reducing balance; schedule generated at disbursement, immutable
-- [ ] Disbursement → ledger
-- [ ] Repayments, split principal/interest, → ledger
-- [ ] Arrears ageing report
+- [x] Loan application + eligibility engine (savings × multiplier − outstanding − guaranteed) — `src/loans.ts`, proven in `tests/loans.spec.ts`
+- [x] Guarantors, with encumbrance tracked against the guarantor's own savings — a guarantee is itself subject to the guarantor's own eligibility check
+- [x] Approval workflow — gated by `packages/core`'s existing owner/admin roles, not a dedicated treasurer/committee role (core has no such role; would need a `packages/core` RBAC change to add one)
+- [ ] Amortization: flat **and** reducing balance — flat only; `reducing_balance` is accepted by the schema's check constraint but rejected at the application layer (`UnsupportedMethodError`) since it isn't implemented
+- [x] Disbursement → ledger
+- [x] Repayments, split principal/interest, → ledger — one full installment per `postRepayment()` call; partial payments aren't supported yet
+- [x] Arrears ageing report — `getArrearsReport()`, 30/60/90+ buckets
+- [ ] Loans/guarantors/repayments UI — engine and tests only so far, no screens yet (same "logic first" order as `core`/`ledger`/`rules`)
 
 **Phase 3 — Year end**
 - [ ] Interest accrual run
@@ -154,7 +156,7 @@ A member's savings balance is **derived from the ledger**, never stored in a col
 - [ ] Member self-service portal
 - [ ] Loan write-off / rescheduling (new schedule, old one closed, both visible)
 - [ ] Bulk import from bank statement (CSV) with matching
-- [ ] Property tests: no loan exceeds eligibility; ledger balances; dividends reconcile
+- [~] Property tests: no loan exceeds eligibility (proven via rejection cases, not yet a randomized property test); ledger balances (proven — trial balance re-checked after every repayment); dividends reconcile (not built)
 - [ ] Seed a demo society: 60 members, 3 years of contributions, a live loan book with arrears
 - [ ] Deploy with demo login
 
