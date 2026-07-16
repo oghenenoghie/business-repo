@@ -53,3 +53,90 @@ export interface MemberStatement {
   savingsBalance: bigint;
   lines: StatementLine[];
 }
+
+export type LoanStatus = "pending" | "approved" | "disbursed" | "active" | "repaid" | "defaulted" | "rescheduled";
+export type LoanMethod = "flat" | "reducing_balance";
+
+export interface Loan {
+  id: string;
+  orgId: string;
+  memberId: string;
+  principal: bigint;
+  interestRate: number; // annual, fractional — 0.15 means 15% per annum
+  tenorMonths: number;
+  method: LoanMethod;
+  status: LoanStatus;
+  appliedAt: string;
+  approvedBy: string | null;
+  approvedAt: string | null;
+  disbursedAt: string | null;
+  journalEntryId: string | null;
+}
+
+export interface LoanApplicationInput {
+  orgId: string;
+  memberId: string;
+  principal: bigint;
+  interestRate: number;
+  tenorMonths: number;
+  method: LoanMethod;
+}
+
+export interface EligibilityResult {
+  memberId: string;
+  savingsBalance: bigint;
+  multiplier: number;
+  outstandingPrincipal: bigint;
+  guaranteedExposure: bigint;
+  /** savingsBalance * multiplier - outstandingPrincipal - guaranteedExposure */
+  availableToBorrow: bigint;
+  requestedAmount: bigint;
+  eligible: boolean;
+}
+
+export interface Guarantor {
+  id: string;
+  loanId: string;
+  memberId: string;
+  amountGuaranteed: bigint;
+}
+
+export interface GuarantorInput {
+  loanId: string;
+  memberId: string;
+  amountGuaranteed: bigint;
+}
+
+export interface ScheduleInstallment {
+  installmentNo: number;
+  dueDate: string;
+  principalDue: bigint;
+  interestDue: bigint;
+}
+
+export interface RepaymentScheduleRow extends ScheduleInstallment {
+  id: string;
+  loanId: string;
+  generation: number;
+}
+
+export interface Repayment {
+  id: string;
+  loanId: string;
+  scheduleId: string | null;
+  amount: bigint;
+  principalPortion: bigint;
+  interestPortion: bigint;
+  paidAt: string;
+  journalEntryId: string | null;
+}
+
+export interface ArrearsRow {
+  loanId: string;
+  memberId: string;
+  installmentNo: number;
+  dueDate: string;
+  amountDue: bigint;
+  daysOverdue: number;
+  bucket: "current" | "30" | "60" | "90+";
+}
