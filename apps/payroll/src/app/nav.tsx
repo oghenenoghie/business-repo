@@ -1,8 +1,19 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import type { DemoPersona } from "../lib/session";
 import { logout } from "./login/actions";
 
+const links = [
+  { href: "/dashboard", label: "Dashboard" },
+  { href: "/employees", label: "Employees" },
+  { href: "/payroll", label: "Payroll" },
+];
+
 export function Nav({ persona }: { persona: DemoPersona }) {
+  const pathname = usePathname();
+
   return (
     <nav
       style={{
@@ -14,15 +25,24 @@ export function Nav({ persona }: { persona: DemoPersona }) {
       }}
     >
       <strong>Wagebook</strong>
-      <Link href="/dashboard" style={{ color: "var(--muted)" }}>
-        Dashboard
-      </Link>
-      <Link href="/employees" style={{ color: "var(--muted)" }}>
-        Employees
-      </Link>
-      <Link href="/payroll" style={{ color: "var(--muted)" }}>
-        Payroll
-      </Link>
+      {links.map((link) => {
+        const active = pathname === link.href || pathname.startsWith(`${link.href}/`);
+        return (
+          <Link
+            key={link.href}
+            href={link.href}
+            aria-current={active ? "page" : undefined}
+            style={{
+              color: active ? "var(--text)" : "var(--muted)",
+              fontWeight: active ? 600 : 400,
+              borderBottom: active ? "2px solid var(--iris)" : "2px solid transparent",
+              paddingBottom: "0.2rem",
+            }}
+          >
+            {link.label}
+          </Link>
+        );
+      })}
       <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: "1rem" }}>
         <span style={{ color: "var(--muted)", fontSize: "0.85rem" }}>
           {persona.name} <span style={{ textTransform: "uppercase" }}>({persona.role})</span>
