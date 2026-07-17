@@ -10,11 +10,10 @@ employment records, a run lifecycle (`draft` → `calculated` → `posted`) that
 run, and a minimal payslip PDF. A Next.js UI now sits on top (demo login, dashboard,
 employees, payroll runs, payslip PDF download) and a seed script builds a full demo org —
 verified end-to-end locally (login → dashboard → employees → payroll → PDF, screenshotted
-via Playwright). **Deployed** on Vercel — see "Deploying" below for the live URL. That
-deployment was pushed via a direct file upload, not a Git-connected project, so pushes to
-`main` do **not** trigger a new deployment; the Vercel project needs Settings → Git →
-Connect Git Repository (pointed at this repo, root directory `apps/payroll`) before pushes
-to `main` will show up under its Deployments tab.
+via Playwright). **Deployed** on Vercel, Git-connected to this repo — see "Deploying" below
+for the live URL. As a monorepo app, its build is scoped to this directory, so only commits
+that touch `apps/payroll` produce a new deployment; a `main` push that only changes another
+app (`apps/coop`, `apps/hotel`, `apps/school`) or shared packages correctly produces none.
 
 **The proof:** `tests/payrollRun.spec.ts` — a payroll run for 20 employees (spanning the 0%
 PAYE band through the higher bands, mixed pension/NHF opt-in, some claiming rent relief), all
