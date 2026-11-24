@@ -144,7 +144,7 @@ A member's savings balance is **derived from the ledger**, never stored in a col
 - [x] Disbursement → ledger
 - [x] Repayments, split principal/interest, → ledger — one full installment per `postRepayment()` call; partial payments aren't supported yet
 - [x] Arrears ageing report — `getArrearsReport()`, 30/60/90+ buckets
-- [ ] Loans/guarantors/repayments UI — engine and tests only so far, no screens yet (same "logic first" order as `core`/`ledger`/`rules`)
+- [x] Loans/guarantors/repayments UI — `/loans` (pipeline + arrears summary), `/loans/new` (application form with a live eligibility preview via `/api/eligibility`, debounced as you type), `/loans/[id]` (schedule, guarantors, approve/disburse/record-repayment actions gated by role and loan status); verified with a clean `next build`
 
 **Phase 3 — Year end**
 - [ ] Interest accrual run
