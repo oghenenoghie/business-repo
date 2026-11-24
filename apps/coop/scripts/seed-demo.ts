@@ -4,6 +4,9 @@ import pg from "pg";
 import { DEMO_ADMIN_ID, DEMO_OWNER_ID, DEMO_VIEWER_ID } from "../src/demoPersonas.js";
 import { createMember } from "../src/members.js";
 import { postContribution } from "../src/contributions.js";
+import { applyForLoan, approveLoan, disburseLoan, postRepayment } from "../src/loans.js";
+import { runInterestAccrual } from "../src/interestAccrual.js";
+import { allocateDividends, approveDividendRun, createDividendRun, postDividendRun } from "../src/dividends.js";
 
 const { Client } = pg;
 
@@ -80,6 +83,7 @@ async function main() {
     console.log("chart of accounts seeded");
 
     let memberNumber = 1;
+    const membersByName = new Map<string, { id: string }>();
     for (const seed of MEMBERS) {
       const membershipNumber = `AJO-${String(memberNumber++).padStart(3, "0")}`;
       const joinDate = monthsBackFrom(SEED_YEAR, SEED_MONTH, seed.monthsContributed)[0];
@@ -91,6 +95,7 @@ async function main() {
           joinDate: `${joinDate!.year}-${String(joinDate!.month).padStart(2, "0")}-01`,
         }),
       );
+      membersByName.set(seed.fullName, member);
 
       const amount = BigInt(seed.monthlyNaira) * 100n;
       for (const period of monthsBackFrom(SEED_YEAR, SEED_MONTH, seed.monthsContributed)) {
@@ -106,6 +111,79 @@ async function main() {
       }
     }
     console.log(`${MEMBERS.length} members seeded, with contribution histories`);
+
+    // A handful of loans in different pipeline states, so the loans UI has
+    // something to show: one still awaiting approval, one active with an
+    // overdue installment (to populate the arrears report), and one fully
+    // repaid (flat-rate and reducing-balance, one of each).
+    const pendingBorrower = membersByName.get("Aisha Bello")!;
+    await withUserContext(DEMO_OWNER_ID, (client) =>
+      applyForLoan(client, {
+        orgId,
+        memberId: pendingBorrower.id,
+        principal: 30_000_00n,
+        interestRate: 0.15,
+        tenorMonths: 6,
+        method: "flat",
+      }),
+    );
+
+    const arrearsBorrower = membersByName.get("Blessing Okoye")!;
+    const arrearsLoan = await withUserContext(DEMO_OWNER_ID, (client) =>
+      applyForLoan(client, {
+        orgId,
+        memberId: arrearsBorrower.id,
+        principal: 60_000_00n,
+        interestRate: 0.14,
+        tenorMonths: 6,
+        method: "flat",
+      }),
+    );
+    await withUserContext(DEMO_OWNER_ID, (client) => approveLoan(client, arrearsLoan.id, DEMO_OWNER_ID));
+    await withUserContext(DEMO_OWNER_ID, (client) => disburseLoan(client, arrearsLoan.id));
+    await admin.query(
+      `update repayment_schedules set due_date = current_date - interval '45 days'
+       where loan_id = $1 and installment_no = 1`,
+      [arrearsLoan.id],
+    );
+
+    const repaidBorrower = membersByName.get("Tobenna Uzo")!;
+    const repaidLoan = await withUserContext(DEMO_OWNER_ID, (client) =>
+      applyForLoan(client, {
+        orgId,
+        memberId: repaidBorrower.id,
+        principal: 90_000_00n,
+        interestRate: 0.13,
+        tenorMonths: 6,
+        method: "reducing_balance",
+      }),
+    );
+    await withUserContext(DEMO_OWNER_ID, (client) => approveLoan(client, repaidLoan.id, DEMO_OWNER_ID));
+    await withUserContext(DEMO_OWNER_ID, (client) => disburseLoan(client, repaidLoan.id));
+    for (let i = 0; i < 6; i++) {
+      await withUserContext(DEMO_OWNER_ID, (client) => postRepayment(client, { loanId: repaidLoan.id }));
+    }
+    console.log("3 demo loans seeded: pending, active with arrears, fully repaid");
+
+    // An interest accrual run against the overdue installment above, and a
+    // full dividend run (create -> allocate -> approve -> post), so /reports
+    // has real data to show instead of empty tables.
+    const asOfDate = new Date().toISOString().slice(0, 10);
+    await withUserContext(DEMO_OWNER_ID, (client) => runInterestAccrual(client, orgId, asOfDate));
+    console.log("interest accrual run seeded");
+
+    const dividendRun = await withUserContext(DEMO_OWNER_ID, (client) =>
+      createDividendRun(client, {
+        orgId,
+        financialYear: SEED_YEAR - 1,
+        distributableSurplus: 500_000_00n,
+        basis: "savings",
+      }),
+    );
+    await withUserContext(DEMO_OWNER_ID, (client) => allocateDividends(client, dividendRun.id));
+    await withUserContext(DEMO_OWNER_ID, (client) => approveDividendRun(client, dividendRun.id, DEMO_OWNER_ID));
+    await withUserContext(DEMO_OWNER_ID, (client) => postDividendRun(client, dividendRun.id));
+    console.log(`dividend run seeded for FY${SEED_YEAR - 1}`);
 
     console.log("done");
     console.log(`login as: owner=${DEMO_OWNER_ID} admin=${DEMO_ADMIN_ID} viewer=${DEMO_VIEWER_ID}`);

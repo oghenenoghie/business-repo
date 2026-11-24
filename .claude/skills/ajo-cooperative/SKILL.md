@@ -140,23 +140,25 @@ A member's savings balance is **derived from the ledger**, never stored in a col
 - [x] Loan application + eligibility engine (savings × multiplier − outstanding − guaranteed) — `src/loans.ts`, proven in `tests/loans.spec.ts`
 - [x] Guarantors, with encumbrance tracked against the guarantor's own savings — a guarantee is itself subject to the guarantor's own eligibility check
 - [x] Approval workflow — gated by `packages/core`'s existing owner/admin roles, not a dedicated treasurer/committee role (core has no such role; would need a `packages/core` RBAC change to add one)
-- [ ] Amortization: flat **and** reducing balance — flat only; `reducing_balance` is accepted by the schema's check constraint but rejected at the application layer (`UnsupportedMethodError`) since it isn't implemented
+- [x] Amortization: flat **and** reducing balance — `generateFlatSchedule()` and `generateReducingBalanceSchedule()`, both dispatched by `loan.method` at disbursement; reducing-balance is a standard annuity (fixed payment, interest on the declining balance), final installment absorbs the residual same as flat
 - [x] Disbursement → ledger
 - [x] Repayments, split principal/interest, → ledger — one full installment per `postRepayment()` call; partial payments aren't supported yet
 - [x] Arrears ageing report — `getArrearsReport()`, 30/60/90+ buckets
-- [ ] Loans/guarantors/repayments UI — engine and tests only so far, no screens yet (same "logic first" order as `core`/`ledger`/`rules`)
+- [x] Loans/guarantors/repayments UI — `/loans` (pipeline + arrears banner), `/loans/new` (application form with a live eligibility check as the amount is typed, via a server action called directly from a client component), `/loans/[id]` (schedule with paid/overdue/upcoming status, guarantors, approve/disburse/post-repayment actions gated by role and loan status)
+- [x] Fixed a latent bug the UI surfaced: `date`/`timestamptz` columns come back from `pg` as JS `Date` objects by default (same gotcha `members.ts` already worked around) — `loans.ts` now normalizes every date-ish field back to a string before it reaches a UI, so `due_date` comparisons and rendering are safe
 
 **Phase 3 — Year end**
-- [ ] Interest accrual run
-- [ ] Dividend run: surplus → pro-rata allocation → largest-remainder distribution
-- [ ] Assert `sum(allocations) === surplus` exactly, in a test
-- [ ] Trial balance report
+- [x] Interest accrual run — `src/interestAccrual.ts`'s `runInterestAccrual()`: Dr `1150` Interest Receivable / Cr `4100` Interest Income for installments due-but-unpaid as of a date, idempotent (a rerun finds nothing left to accrue). Marks each installment's `accrued_at`; `postRepayment()` then credits `1150` instead of `4100` for that installment's interest so income is never booked twice — proven end to end in `tests/interestAccrual.spec.ts` (accrual → repay-while-accrued → repay-never-accrued, trial balance re-checked at every step)
+- [x] Dividend run: surplus → pro-rata allocation → largest-remainder distribution — `src/dividends.ts`, `create → allocate → approve → post` state machine matching the `dividend_runs.status` check constraint; only the `savings` basis is implemented (`share_capital`/`patronage` throw `UnsupportedDividendBasisError` — no application code writes `share_capital` yet, same gap Phase 1 flagged)
+- [x] Assert `sum(allocations) === surplus` exactly, in a test — `tests/dividends.spec.ts`, deliberately uneven savings amounts so the largest-remainder top-up (not just floor division) is what makes it reconcile
+- [x] Trial balance report — `/reports`: trial balance + key account balances, loan book ageing (bucketed arrears totals), interest accrual runs, dividend runs
 
 **Phase 4 — Members & proof**
 - [ ] Member self-service portal
 - [ ] Loan write-off / rescheduling (new schedule, old one closed, both visible)
 - [ ] Bulk import from bank statement (CSV) with matching
-- [~] Property tests: no loan exceeds eligibility (proven via rejection cases, not yet a randomized property test); ledger balances (proven — trial balance re-checked after every repayment); dividends reconcile (not built)
+- [ ] Dividend payout posting (Dr `2150` / Cr `1000` per member) — `dividend_allocations` has no paid-tracking columns yet; the run posts the aggregate liability (`postDividendRun()`) but not individual payouts
+- [~] Property tests: no loan exceeds eligibility (proven via rejection cases, not yet a randomized property test); ledger balances (proven — trial balance re-checked after every repayment/accrual/dividend post); dividends reconcile (proven exactly, see Phase 3)
 - [ ] Seed a demo society: 60 members, 3 years of contributions, a live loan book with arrears
 - [ ] Deploy with demo login
 

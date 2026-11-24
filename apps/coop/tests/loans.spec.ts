@@ -13,6 +13,7 @@ import {
   checkEligibility,
   disburseLoan,
   generateFlatSchedule,
+  generateReducingBalanceSchedule,
   getArrearsReport,
   getLoan,
   getRepaymentSchedule,
@@ -40,6 +41,39 @@ describe("flat-rate amortization schedule", () => {
 
   it("a single-installment loan puts the whole principal and interest in that one installment", () => {
     const schedule = generateFlatSchedule(50_000n, 0.1, 1, "2026-01-01");
+    expect(schedule).toHaveLength(1);
+    expect(schedule[0]!.principalDue).toBe(50_000n);
+  });
+});
+
+describe("reducing-balance amortization schedule", () => {
+  it("sums exactly to principal, with interest computed on the declining balance", () => {
+    const schedule = generateReducingBalanceSchedule(120_000n, 0.12, 12, "2026-01-15");
+
+    expect(schedule).toHaveLength(12);
+    const principalSum = schedule.reduce((sum, i) => sum + i.principalDue, 0n);
+    expect(principalSum).toBe(120_000n);
+
+    // Interest is charged on the outstanding balance each period, so as
+    // principal is paid down the interest portion strictly declines.
+    for (let i = 1; i < schedule.length; i++) {
+      expect(schedule[i]!.interestDue).toBeLessThanOrEqual(schedule[i - 1]!.interestDue);
+    }
+    expect(schedule[0]!.interestDue).toBeGreaterThan(schedule[11]!.interestDue);
+  });
+
+  it("an interest-free loan splits principal evenly, no interest charged", () => {
+    const schedule = generateReducingBalanceSchedule(60_000n, 0, 6, "2026-01-01");
+    expect(schedule).toHaveLength(6);
+    for (const installment of schedule) {
+      expect(installment.interestDue).toBe(0n);
+    }
+    const principalSum = schedule.reduce((sum, i) => sum + i.principalDue, 0n);
+    expect(principalSum).toBe(60_000n);
+  });
+
+  it("a single-installment loan puts the whole principal and interest in that one installment", () => {
+    const schedule = generateReducingBalanceSchedule(50_000n, 0.1, 1, "2026-01-01");
     expect(schedule).toHaveLength(1);
     expect(schedule[0]!.principalDue).toBe(50_000n);
   });
@@ -190,6 +224,35 @@ describe("loan eligibility, guarantor encumbrance, and the full disbursement/rep
     await expect(withUserContext(ownerId, (client) => postRepayment(client, { loanId }))).rejects.toThrow(
       InvalidLoanStateError,
     );
+  });
+
+  it("applies for, approves, disburses, and fully repays a reducing-balance loan", async () => {
+    const loan = await withUserContext(ownerId, (client) =>
+      applyForLoan(client, {
+        orgId,
+        memberId: borrowerId,
+        principal: 24_000n,
+        interestRate: 0.12,
+        tenorMonths: 6,
+        method: "reducing_balance",
+      }),
+    );
+    await withUserContext(ownerId, (client) => approveLoan(client, loan.id, ownerId));
+    const disbursed = await withUserContext(ownerId, (client) => disburseLoan(client, loan.id));
+    expect(disbursed.status).toBe("active");
+
+    const schedule = await withUserContext(ownerId, (client) => getRepaymentSchedule(client, loan.id));
+    expect(schedule).toHaveLength(6);
+    expect(schedule.reduce((sum, i) => sum + i.principalDue, 0n)).toBe(24_000n);
+
+    for (let i = 0; i < 6; i++) {
+      await withUserContext(ownerId, (client) => postRepayment(client, { loanId: loan.id }));
+      const totals = await withUserContext(ownerId, (client) => trialBalance(client, orgId));
+      expect(totals["NGN"]).toBe(0n);
+    }
+
+    const repaidLoan = await withUserContext(ownerId, (client) => getLoan(client, loan.id));
+    expect(repaidLoan!.status).toBe("repaid");
   });
 });
 
